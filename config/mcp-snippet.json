@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "academic-search": {
+      "command": "python3",
+      "args": ["<YOUR_HOME>/.claude/mcp_servers/academic-search/academic_search_server.py"],
+      "env": {
+        "PUBMED_EMAIL": "<YOUR_EMAIL>"
+      }
+    }
+  }
+}
