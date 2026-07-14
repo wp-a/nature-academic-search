@@ -48,6 +48,12 @@ Repository = "https://github.com/wp-a/nature-academic-search"
 [tool.hatch.build.targets.wheel]
 packages = ["src/nature_academic_search"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"SKILL.md" = "nature_academic_search/_skill/SKILL.md"
+"references/search-workflows.md" = "nature_academic_search/_skill/references/search-workflows.md"
+"references/citation-files.md" = "nature_academic_search/_skill/references/citation-files.md"
+"plugins/nature-academic-search/skills/nature-academic-search/agents/openai.yaml" = "nature_academic_search/_skill/agents/openai.yaml"
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
