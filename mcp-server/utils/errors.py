@@ -1,22 +1,16 @@
-"""Unified error types for academic search operations."""
+"""Compatibility alias for :mod:`nature_academic_search.errors`."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
 
 
-class AcademicSearchError(Exception):
-    """Base exception for academic search operations."""
+SRC = Path(__file__).resolve().parents[2] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from nature_academic_search import errors as _implementation
 
 
-class DataSourceError(AcademicSearchError):
-    """Error from a specific data source."""
-
-    def __init__(self, source: str, message: str, original_error: Exception | None = None):
-        self.source = source
-        self.original_error = original_error
-        super().__init__(f"[{source}] {message}")
-
-
-class TimeoutError(AcademicSearchError):
-    """Request timeout after retries."""
-
-
-class ConfigError(AcademicSearchError):
-    """Configuration error."""
+sys.modules[__name__] = _implementation
