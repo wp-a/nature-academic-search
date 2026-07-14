@@ -4,11 +4,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from nature_academic_search.search import deduplicate_records, search_all
+from nature_academic_search.search import deduplicate_records, search_all  # noqa: E402
 
 
 def test_duplicate_doi_records_merge_sources_and_citation_count() -> None:

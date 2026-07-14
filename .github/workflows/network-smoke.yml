@@ -1,0 +1,23 @@
+name: Network smoke
+
+on:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install package
+        run: python -m pip install .
+      - name: Check official data-source endpoints
+        run: nature-academic-search preflight

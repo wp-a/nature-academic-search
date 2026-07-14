@@ -9,11 +9,13 @@ description = "Academic literature search and citation workflows for PubMed, Cro
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "wp-a" }]
+license = { file = "LICENSE" }
 keywords = ["academic-search", "arxiv", "citation", "crossref", "mcp", "pubmed"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",

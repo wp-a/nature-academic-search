@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pre-flight API endpoint connectivity checker.
 
@@ -55,11 +54,11 @@ def check_single(name, url, timeout, expect_status=None):
         # Produce a short error label: prefer the os-error string over full traceback
         error_str = str(e)
         if "time" in error_str.lower() and "out" in error_str.lower():
-            error_str = "timeout after {}s".format(timeout)
+            error_str = f"timeout after {timeout}s"
         elif hasattr(e, "reason") and e.reason is not None:
             error_str = str(e.reason)
         elif hasattr(e, "code"):
-            error_str = "HTTP {}".format(e.code)
+            error_str = f"HTTP {e.code}"
         return False, elapsed, error_str
 
 
@@ -99,7 +98,7 @@ def print_report(results):
             extra = " ({})".format(info["error"])
         print("  {:20s}: {} ({:.1f}s){}".format(name, status, info["time"], extra))
 
-    print("  {}/{} endpoints reachable.".format(ok_count, total))
+    print(f"  {ok_count}/{total} endpoints reachable.")
 
     if ok_count < total:
         print("  Affected:")

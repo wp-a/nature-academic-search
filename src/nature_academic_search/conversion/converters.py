@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 Format converters for academic citations.
-Supports: MEDLINE/.nbib -> RIS/BibTeX/ENW, CrossRef JSON -> RIS/BibTeX/ENW, arXiv XML -> RIS/BibTeX/ENW.
+Supports MEDLINE/NBIB, CrossRef JSON, and arXiv XML inputs with RIS, BibTeX,
+and ENW outputs.
 
 Each converter accepts parsed data and returns a formatted string.
 """
@@ -238,7 +238,11 @@ def crossref_to_bib(data):
     """Convert CrossRef API JSON response to BibTeX format."""
     msg = data.get("message", data)
 
-    first_author = msg.get("author", [{}])[0].get("family", "unknown") if msg.get("author") else "unknown"
+    first_author = (
+        msg.get("author", [{}])[0].get("family", "unknown")
+        if msg.get("author")
+        else "unknown"
+    )
     issued = msg.get("issued", {})
     date_parts = issued.get("date-parts", [[None]])[0]
     year = str(date_parts[0]) if date_parts and date_parts[0] else ""

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Multi-source citation downloader with format conversion.
 Sources: PubMed (NCBI E-utilities), CrossRef (REST API), arXiv (Atom API).
@@ -23,19 +22,18 @@ refs.txt format:
   # Lines starting with # are comments
 """
 
-import os
-import sys
-import time
-import json
 import argparse
+import json
+import os
+import time
 import xml.etree.ElementTree as ET
-from urllib.request import urlopen
 from urllib.parse import urlencode
+from urllib.request import urlopen
 
 from .conversion import (
-    convert_from_medline,
-    convert_from_crossref,
     convert_from_arxiv,
+    convert_from_crossref,
+    convert_from_medline,
     get_extension,
 )
 
@@ -249,7 +247,7 @@ def process_file(input_file, output_dir, fmt, retries=1):
         print(f"Error: Input file not found: {input_file}")
         return 0, 0, [f"File not found: {input_file}"]
 
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     success, failed, errors = 0, 0, []
@@ -268,8 +266,14 @@ def process_file(input_file, output_dir, fmt, retries=1):
 
 
 def interactive_mode(output_dir, fmt, retries=1):
-    print(f"Interactive mode (format: {fmt}) - enter references (one per line, empty line to finish):")
-    print("Formats: PMID:12345 | DOI:10.xxx | ARXIV:2301.xxx | AUTHOR:Name TITLE:keywords | QUERY:...")
+    print(
+        f"Interactive mode (format: {fmt}) - enter references "
+        "(one per line, empty line to finish):"
+    )
+    print(
+        "Formats: PMID:12345 | DOI:10.xxx | ARXIV:2301.xxx | "
+        "AUTHOR:Name TITLE:keywords | QUERY:..."
+    )
     print("-" * 60)
 
     success, failed, errors = 0, 0, []
@@ -301,7 +305,8 @@ def self_test():
 
     # 1. Module import check
     try:
-        from converters import convert_from_medline, convert_from_crossref, convert_from_arxiv
+        assert callable(convert_from_medline)
+        assert callable(convert_from_crossref)
         print("  [OK] Module imports")
     except Exception as e:
         print(f"  [FAIL] Module imports: {e}")
@@ -319,9 +324,13 @@ def self_test():
             bib_content = convert_from_medline(nbib_text, "bib")
             enw_content = convert_from_medline(nbib_text, "enw")
             if ris_content.strip() and bib_content.strip() and enw_content.strip():
-                print(f"  [OK] PubMed endpoint (RIS: {len(ris_content)}B, BibTeX: {len(bib_content)}B, ENW: {len(enw_content)}B)")
+                print(
+                    "  [OK] PubMed endpoint "
+                    f"(RIS: {len(ris_content)}B, BibTeX: {len(bib_content)}B, "
+                    f"ENW: {len(enw_content)}B)"
+                )
             else:
-                print(f"  [FAIL] PubMed conversion produced empty output")
+                print("  [FAIL] PubMed conversion produced empty output")
         else:
             print(f"  [FAIL] PubMed returned empty response for PMID {pmid}")
     except Exception as e:
@@ -331,8 +340,8 @@ def self_test():
     doi = "10.1038/nature14539"
     print(f"  Testing CrossRef (DOI {doi})...")
     try:
-        from urllib.request import urlopen
         import json
+        from urllib.request import urlopen
         time.sleep(0.5)
         url = f"https://api.crossref.org/works/{doi}"
         with urlopen(url, timeout=30) as resp:
@@ -341,9 +350,13 @@ def self_test():
         bib_content = convert_from_crossref(data, "bib")
         enw_content = convert_from_crossref(data, "enw")
         if ris_content.strip() and bib_content.strip() and enw_content.strip():
-            print(f"  [OK] CrossRef endpoint (RIS: {len(ris_content)}B, BibTeX: {len(bib_content)}B, ENW: {len(enw_content)}B)")
+            print(
+                "  [OK] CrossRef endpoint "
+                f"(RIS: {len(ris_content)}B, BibTeX: {len(bib_content)}B, "
+                f"ENW: {len(enw_content)}B)"
+            )
         else:
-            print(f"  [FAIL] CrossRef conversion produced empty output")
+            print("  [FAIL] CrossRef conversion produced empty output")
     except Exception as e:
         print(f"  [FAIL] CrossRef endpoint: {e}")
 
@@ -386,23 +399,36 @@ refs.txt format:
     parser.add_argument("--input", help="Input file with references")
     parser.add_argument("--interactive", action="store_true", help="Interactive mode")
     parser.add_argument(
-        "--format", choices=["nbib", "ris", "bib", "enw"], default="nbib",
-        help="Output format: nbib (default, MEDLINE), ris (EndNote/Zotero), bib (BibTeX/LaTeX), enw (EndNote tagged)",
+        "--format",
+        choices=["nbib", "ris", "bib", "enw"],
+        default="nbib",
+        help=(
+            "Output format: nbib (default, MEDLINE), ris (EndNote/Zotero), "
+            "bib (BibTeX/LaTeX), enw (EndNote tagged)"
+        ),
     )
     parser.add_argument(
         "--output", default="./references/",
         help="Output directory (default: ./references/)",
     )
     parser.add_argument("--version", action="version", version="format-converter 1.0.0")
-    parser.add_argument("--test", action="store_true", help="Run self-test on format converter pipeline")
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run self-test on format converter pipeline",
+    )
     parser.add_argument("--retry", type=int, default=1, help="Retry count for HTTP calls")
-    parser.add_argument("--preflight", action="store_true", help="Run connectivity check on API endpoints")
+    parser.add_argument(
+        "--preflight",
+        action="store_true",
+        help="Run connectivity check on API endpoints",
+    )
 
     args = parser.parse_args(argv)
 
     if args.test:
         self_test()
-        return
+        return 0
 
     if args.preflight:
         from .preflight import check_endpoints
@@ -420,11 +446,24 @@ refs.txt format:
         total = len(results)
         print(f"  {reachable}/{total} endpoints reachable.")
         if not all_ok:
-            print("  Affected: format-converter downloads for unreachable endpoints (MCP tools unaffected).")
-            _sys.exit(1)
-        return
+            print(
+                "  Affected: format-converter downloads for unreachable endpoints "
+                "(MCP tools unaffected)."
+            )
+            return 1
+        return 0
 
-    if not any([args.pmid, args.doi, args.arxiv, args.author, args.query, args.input, args.interactive]):
+    if not any(
+        [
+            args.pmid,
+            args.doi,
+            args.arxiv,
+            args.author,
+            args.query,
+            args.input,
+            args.interactive,
+        ]
+    ):
         parser.error("Specify at least one input method")
 
     fmt = args.format
@@ -514,7 +553,8 @@ refs.txt format:
             print(f"    - {err}")
     print(f"  Output:  {output_dir}")
     print("=" * 60)
+    return 1 if total_failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

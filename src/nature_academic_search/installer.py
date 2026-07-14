@@ -12,7 +12,6 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-
 SERVER_NAME = "nature-academic-search"
 SERVER_COMMAND = "nature-academic-search-mcp"
 Runner = Callable[..., Any]

@@ -183,7 +183,8 @@ class PubMedSource:
         if not cfg.pubmed_email:
             raise DataSourceError(
                 SOURCE_NAME,
-                "PubMed email not configured. Set PUBMED_EMAIL env var or [pubmed].email in config.toml",
+                "PubMed email not configured. Set PUBMED_EMAIL or "
+                "[pubmed].email in config.toml",
             )
 
         rows = min(rows, cfg.max_rows)
@@ -207,7 +208,12 @@ class PubMedSource:
         web_env_el = root.find("WebEnv")
         query_key_el = root.find("QueryKey")
 
-        if web_env_el is None or query_key_el is None or not web_env_el.text or not query_key_el.text:
+        if (
+            web_env_el is None
+            or query_key_el is None
+            or not web_env_el.text
+            or not query_key_el.text
+        ):
             # No results
             return {"total": 0, "query": query, "results": []}
 
@@ -255,7 +261,8 @@ class PubMedSource:
         if not cfg.pubmed_email:
             raise DataSourceError(
                 SOURCE_NAME,
-                "PubMed email not configured. Set PUBMED_EMAIL env var or [pubmed].email in config.toml",
+                "PubMed email not configured. Set PUBMED_EMAIL or "
+                "[pubmed].email in config.toml",
             )
 
         fetch_params: dict[str, Any] = {
@@ -292,7 +299,8 @@ class PubMedSource:
         if not cfg.pubmed_email:
             raise DataSourceError(
                 SOURCE_NAME,
-                "PubMed email not configured. Set PUBMED_EMAIL env var or [pubmed].email in config.toml",
+                "PubMed email not configured. Set PUBMED_EMAIL or "
+                "[pubmed].email in config.toml",
             )
 
         # Use esearch on MeSH database
