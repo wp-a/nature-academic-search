@@ -51,6 +51,12 @@ def test_publish_workflow_uses_oidc_without_api_token() -> None:
     assert "password:" not in workflow
 
 
+def test_publish_workflow_uploads_release_assets_without_a_checkout() -> None:
+    workflow = read(".github/workflows/publish.yml")
+
+    assert '--repo "${{ github.repository }}"' in workflow
+
+
 def test_dependabot_tracks_python_and_actions_monthly() -> None:
     config = read(".github/dependabot.yml")
 
