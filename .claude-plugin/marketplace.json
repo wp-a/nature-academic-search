@@ -1,0 +1,18 @@
+{
+  "name": "wp-a-academic-tools",
+  "owner": {
+    "name": "wp-a"
+  },
+  "metadata": {
+    "description": "Academic research skills and MCP tools maintained by wp-a.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "nature-academic-search",
+      "description": "Search, verify, deduplicate, and export literature across PubMed, CrossRef, and arXiv.",
+      "source": "./plugins/nature-academic-search",
+      "strict": true
+    }
+  ]
+}

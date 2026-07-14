@@ -1,119 +1,84 @@
 #!/usr/bin/env bash
-# Academic Search Skill + MCP Server Installer for Claude Code
-# Usage: bash install.sh [PUBMED_EMAIL]
+# Install nature-academic-search for Codex, Claude Code, or both.
+# Backward compatible usage: bash install.sh researcher@example.com
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDE_DIR="${HOME}/.claude"
-MCP_TARGET="${CLAUDE_DIR}/mcp_servers/academic-search"
-SKILL_TARGET="${CLAUDE_DIR}/skills/academic-search"
-MCP_JSON="${CLAUDE_DIR}/.mcp.json"
+CLIENT="both"
+EMAIL="${PUBMED_EMAIL:-}"
+DRY_RUN=0
 
-PUBMED_EMAIL="${1:-user@example.com}"
-
-echo "=== Academic Search Installer ==="
-echo "Target: ${CLAUDE_DIR}"
-echo "PubMed email: ${PUBMED_EMAIL}"
-echo
-
-# 1. Install Python dependencies
-echo "[1/5] Installing Python dependencies..."
-pip install --quiet mcp requests toml lxml 2>/dev/null || {
-    echo "  pip failed, trying pip3..."
-    pip3 install --quiet mcp requests toml lxml 2>/dev/null || {
-        echo "  WARNING: Could not install Python deps. Install manually:"
-        echo "    pip install mcp requests toml lxml"
-    }
+usage() {
+  echo "Usage: bash install.sh [PUBMED_EMAIL] [--client codex|claude|both] [--email EMAIL] [--dry-run]"
 }
 
-# 2. Copy MCP server
-echo "[2/5] Copying MCP server..."
-mkdir -p "${MCP_TARGET}"
-cp -r "${SCRIPT_DIR}/mcp-server/"* "${MCP_TARGET}/"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --client)
+      CLIENT="${2:?--client requires a value}"
+      shift 2
+      ;;
+    --email)
+      EMAIL="${2:?--email requires a value}"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "${EMAIL}" ]]; then
+        echo "Only one positional PUBMED_EMAIL is accepted" >&2
+        exit 2
+      fi
+      EMAIL="$1"
+      shift
+      ;;
+  esac
+done
 
-# 3. Copy Skill
-echo "[3/5] Copying Skill..."
-mkdir -p "${SKILL_TARGET}"
-cp "${SCRIPT_DIR}/README.md" "${SKILL_TARGET}/"
-cp "${SCRIPT_DIR}/SKILL.md" "${SKILL_TARGET}/"
-cp -r "${SCRIPT_DIR}/references" "${SKILL_TARGET}/"
-cp -r "${SCRIPT_DIR}/scripts" "${SKILL_TARGET}/"
-cp -r "${SCRIPT_DIR}/config" "${SKILL_TARGET}/"
-
-# 4. Merge .mcp.json
-echo "[4/5] Configuring .mcp.json..."
-if [ -f "${MCP_JSON}" ]; then
-    # Check if academic-search already exists
-    if grep -q '"academic-search"' "${MCP_JSON}" 2>/dev/null; then
-        echo "  academic-search already in .mcp.json, skipping merge."
-    else
-        # Inject into existing mcpServers object
-        python3 -c "
-import json, sys
-with open('${MCP_JSON}', 'r') as f:
-    cfg = json.load(f)
-cfg.setdefault('mcpServers', {})['academic-search'] = {
-    'command': 'python3',
-    'args': ['${MCP_TARGET}/academic_search_server.py'],
-    'env': {'PUBMED_EMAIL': '${PUBMED_EMAIL}'}
-}
-with open('${MCP_JSON}', 'w') as f:
-    json.dump(cfg, f, indent=2)
-    f.write('\n')
-print('  Merged academic-search into existing .mcp.json')
-"
-    fi
-else
-    cat > "${MCP_JSON}" <<MCPJSON
-{
-  "mcpServers": {
-    "academic-search": {
-      "command": "python3",
-      "args": ["${MCP_TARGET}/academic_search_server.py"],
-      "env": {
-        "PUBMED_EMAIL": "${PUBMED_EMAIL}"
-      }
-    }
-  }
-}
-MCPJSON
-    echo "  Created new .mcp.json"
+if [[ "${CLIENT}" != "codex" && "${CLIENT}" != "claude" && "${CLIENT}" != "both" ]]; then
+  echo "--client must be codex, claude, or both" >&2
+  exit 2
 fi
 
-# 5. Enable in settings.json
-echo "[5/5] Enabling in settings.json..."
-SETTINGS_JSON="${CLAUDE_DIR}/settings.json"
-if [ -f "${SETTINGS_JSON}" ]; then
-    python3 -c "
-import json
-with open('${SETTINGS_JSON}', 'r') as f:
-    cfg = json.load(f)
-enabled = cfg.setdefault('enabledMcpjsonServers', [])
-if 'academic-search' not in enabled:
-    enabled.append('academic-search')
-    with open('${SETTINGS_JSON}', 'w') as f:
-        json.dump(cfg, f, indent=2)
-        f.write('\n')
-    print('  Added academic-search to enabledMcpjsonServers')
-else:
-    print('  academic-search already enabled')
-"
-else
-    echo '  WARNING: settings.json not found. Manually add "academic-search" to enabledMcpjsonServers.'
+if [[ -z "${EMAIL}" ]]; then
+  echo "A PubMed contact email is required. Pass --email or set PUBMED_EMAIL." >&2
+  exit 2
 fi
 
-echo
-echo "=== Done ==="
-echo
-echo "Installed:"
-echo "  MCP server : ${MCP_TARGET}/"
-echo "  Skill      : ${SKILL_TARGET}/"
-echo
-echo "Next steps:"
-echo "  1. Restart Claude Code (or /clear)"
-echo "  2. Set your PubMed email in config.toml or PUBMED_EMAIL env var"
-echo "  3. (Optional) Add NCBI_API_KEY for higher rate limits"
-echo "  4. Test: ask Claude 'search papers about CRISPR'"
-echo
-echo "Optional: copy triggers to your data/triggers.toml"
-echo "  See: config/triggers-academic-search.toml"
+if command -v uv >/dev/null 2>&1; then
+  INSTALLER=(uv tool install --force "${SCRIPT_DIR}")
+elif command -v pipx >/dev/null 2>&1; then
+  INSTALLER=(pipx install --force "${SCRIPT_DIR}")
+else
+  echo "Install uv or pipx first; global pip installation is intentionally unsupported." >&2
+  exit 1
+fi
+
+if [[ ${DRY_RUN} -eq 1 ]]; then
+  printf 'dry-run:'
+  printf ' %q' "${INSTALLER[@]}"
+  printf '\n'
+  PYTHONPATH="${SCRIPT_DIR}/src" python3 -m nature_academic_search install \
+    --client "${CLIENT}" \
+    --email "${EMAIL}" \
+    --skill-source "${SCRIPT_DIR}" \
+    --dry-run
+  exit 0
+fi
+
+"${INSTALLER[@]}"
+nature-academic-search install \
+  --client "${CLIENT}" \
+  --email "${EMAIL}" \
+  --skill-source "${SCRIPT_DIR}"

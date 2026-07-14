@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "nature-academic-search": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "nature-academic-search==0.1.0",
+        "nature-academic-search-mcp"
+      ]
+    }
+  }
+}

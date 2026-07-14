@@ -1,7 +1,15 @@
-"""Data source modules for academic search."""
+"""Compatibility package for the pre-PyPI server layout."""
 
-from .crossref import CrossRefSource
-from .pubmed import PubMedSource
-from .arxiv import ArxivSource
+from __future__ import annotations
 
-__all__ = ["CrossRefSource", "PubMedSource", "ArxivSource"]
+import sys
+from pathlib import Path
+
+
+SRC = Path(__file__).resolve().parents[2] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from nature_academic_search.sources import ArxivSource, CrossRefSource, PubMedSource
+
+__all__ = ["ArxivSource", "CrossRefSource", "PubMedSource"]

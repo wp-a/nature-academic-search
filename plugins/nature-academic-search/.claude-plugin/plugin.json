@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "nature-academic-search",
+  "version": "0.1.0",
+  "description": "Search, verify, deduplicate, and export academic literature across PubMed, CrossRef, and arXiv.",
+  "author": {
+    "name": "wp-a",
+    "url": "https://github.com/wp-a"
+  },
+  "homepage": "https://github.com/wp-a/nature-academic-search",
+  "repository": "https://github.com/wp-a/nature-academic-search",
+  "license": "MIT",
+  "skills": ["./skills/nature-academic-search"]
+}
