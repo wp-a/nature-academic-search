@@ -35,6 +35,7 @@ test = [
   "pyyaml>=6,<7",
   "pytest>=8,<10",
   "ruff>=0.12,<1",
+  "tomli>=2,<3; python_version < '3.11'",
   "twine>=6,<7",
 ]
 
