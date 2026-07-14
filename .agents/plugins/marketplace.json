@@ -1,0 +1,20 @@
+{
+  "name": "wp-a-academic-tools",
+  "interface": {
+    "displayName": "wp-a Academic Tools"
+  },
+  "plugins": [
+    {
+      "name": "nature-academic-search",
+      "source": {
+        "source": "local",
+        "path": "./plugins/nature-academic-search"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Research"
+    }
+  ]
+}

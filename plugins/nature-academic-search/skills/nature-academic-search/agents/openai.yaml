@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nature Academic Search"
+  short_description: "Verified multi-source literature search"
+  default_prompt: "Use $nature-academic-search to find, verify, deduplicate, and export academic literature."
