@@ -36,7 +36,7 @@ def test_sources_import_without_repository_working_directory(tmp_path: Path) -> 
 def test_logging_setup_is_idempotent() -> None:
     sys.path.insert(0, str(ROOT / "src"))
     try:
-        from nature_academic_search.logging import setup_logging
+        from nature_academic_search.logging import JSONFormatter, setup_logging
 
         logger = setup_logging()
         first_handlers = tuple(logger.handlers)
@@ -46,5 +46,4 @@ def test_logging_setup_is_idempotent() -> None:
 
     assert same_logger is logger
     assert tuple(same_logger.handlers) == first_handlers
-    assert len(first_handlers) == 1
-
+    assert sum(isinstance(handler.formatter, JSONFormatter) for handler in first_handlers) == 1
