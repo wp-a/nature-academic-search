@@ -5,8 +5,8 @@
 - Support Python 3.10-3.13.
 - Keep MCP Python SDK on `mcp>=1.27,<2` until a tested v2 migration is released.
 - Preserve `search_papers`, `get_paper_by_id`, `get_citation`, and `lookup_mesh`.
-- Keep `pyproject.toml`, plugin manifests, marketplace metadata, and `.mcp.json`
-  on the same semantic version.
+- Keep `pyproject.toml`, plugin manifests, versioned marketplace metadata, and
+  `.mcp.json` on the same semantic version.
 
 ## Pull request gates
 
@@ -39,17 +39,21 @@ matching protected GitHub environments before publishing.
 
 ## Release checklist
 
-For the initial release, replace `v0.1.0` with the intended version in later
-releases.
+Choose the intended semantic version before starting and use it consistently:
+
+```bash
+VERSION=x.y.z
+```
 
 1. Confirm the package name is still available and no unexpected release exists.
-2. Update versions in `pyproject.toml`, both plugin manifests, both marketplace
-   files, and the plugin `.mcp.json` pin.
+2. Update versions in `pyproject.toml`, `src/nature_academic_search/__init__.py`,
+   both plugin manifests, Claude marketplace metadata, tests, and the plugin
+   `.mcp.json` pin. The Codex marketplace has no version field.
 3. Run every pull request gate and explicit network smoke test.
 4. Trigger `publish.yml` with `testpypi`; install the uploaded wheel in a clean
    environment and verify all four MCP tools.
-5. Create tag and GitHub release `v0.1.0`. Publishing the release triggers the
-   production PyPI environment.
+5. Create tag and GitHub release `v${VERSION}`. Publishing the release triggers
+   the production PyPI environment.
 6. Install from public PyPI, run `nature-academic-search preflight`, and validate
    both plugin marketplaces from the tag.
 7. Record incompatibilities or release-specific migration notes in the GitHub

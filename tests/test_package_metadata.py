@@ -17,14 +17,14 @@ def load_project() -> dict:
         return tomllib.load(handle)
 
 
-def test_package_exposes_initial_version() -> None:
+def test_package_exposes_release_version() -> None:
     sys.path.insert(0, str(ROOT / "src"))
     try:
         package = importlib.import_module("nature_academic_search")
     finally:
         sys.path.pop(0)
 
-    assert package.__version__ == "0.1.0"
+    assert package.__version__ == "0.1.1"
 
 
 def test_project_declares_supported_python_and_mcp_versions() -> None:
