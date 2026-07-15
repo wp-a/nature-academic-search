@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import yaml
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10
@@ -21,6 +23,10 @@ def project_version() -> str:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_yaml(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def test_codex_plugin_manifest_matches_package() -> None:
@@ -74,6 +80,33 @@ def test_skill_reference_links_exist_inside_plugin() -> None:
 
     assert references
     assert all((PLUGIN_SKILL / reference).is_file() for reference in references)
+
+
+def test_skill_routes_chinese_research_requests_and_reports_verification() -> None:
+    skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+
+    for required in (
+        "找文献",
+        "文献检索",
+        "任务路由",
+        "verified",
+        "mismatch",
+        "not_found",
+        "manual_needed",
+        "结果契约",
+        "references/search-workflows.md",
+        "references/citation-files.md",
+    ):
+        assert required in skill
+
+
+def test_codex_skill_interface_targets_chinese_researchers() -> None:
+    interface = load_yaml(PLUGIN_SKILL / "agents" / "openai.yaml")["interface"]
+
+    assert interface["display_name"] == "Nature Academic Search"
+    assert "文献" in interface["short_description"]
+    assert "$nature-academic-search" in interface["default_prompt"]
+    assert "检索" in interface["default_prompt"]
 
 
 def test_marketplaces_point_to_the_packaged_plugin() -> None:

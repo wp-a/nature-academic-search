@@ -31,6 +31,21 @@ def test_readme_documents_all_supported_install_paths() -> None:
     assert "claude plugin marketplace add wp-a/nature-academic-search" in readme
 
 
+def test_readme_presents_the_chinese_research_workflow() -> None:
+    readme = read("README.md")
+
+    for required in (
+        "可复现的文献检索、核验与引用导出",
+        "直接这样问",
+        "检索 → 去重 → 核验 → 导出",
+        "Google Scholar",
+        "Codex",
+        "Claude Code",
+        "如果这个项目",
+    ):
+        assert required in readme
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 
