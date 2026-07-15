@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nature-academic-search"
-version = "0.1.1"
-description = "Academic literature search and citation workflows for PubMed, CrossRef, and arXiv"
+version = "0.1.2"
+description = "Academic Paper Search for verified PubMed, CrossRef, and arXiv literature workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "wp-a" }]

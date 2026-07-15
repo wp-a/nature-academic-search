@@ -5,12 +5,12 @@
   },
   "metadata": {
     "description": "Academic research skills and MCP tools maintained by wp-a.",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
       "name": "nature-academic-search",
-      "description": "Search, verify, deduplicate, and export literature across PubMed, CrossRef, and arXiv.",
+      "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
       "source": "./plugins/nature-academic-search",
       "strict": true
     }
