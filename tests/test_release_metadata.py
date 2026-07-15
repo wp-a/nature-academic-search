@@ -10,6 +10,8 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_VERSION = "0.1.1"
+DISPLAY_BRAND = "Academic Paper Search"
+TECHNICAL_ID = "nature-academic-search"
 
 
 def read(path: str) -> str:
@@ -43,6 +45,22 @@ def test_project_declares_mit_license_file() -> None:
 
     assert project["license"] == {"file": "LICENSE"}
     assert read("LICENSE").startswith("MIT License\n")
+
+
+def test_display_brand_changes_without_renaming_package_or_commands() -> None:
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        project = tomllib.load(handle)["project"]
+    readme = read("README.md")
+
+    assert f"# {DISPLAY_BRAND}" in readme
+    assert "Nature Academic Search" not in readme
+    assert "安装标识仍为 `nature-academic-search`" in readme
+    assert project["name"] == TECHNICAL_ID
+    assert project["description"].startswith(DISPLAY_BRAND)
+    assert set(project["scripts"]) == {
+        TECHNICAL_ID,
+        "nature-academic-search-mcp",
+    }
 
 
 def test_readme_documents_all_supported_install_paths() -> None:

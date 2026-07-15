@@ -14,6 +14,8 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "nature-academic-search"
 PLUGIN_SKILL = PLUGIN / "skills" / "nature-academic-search"
+DISPLAY_BRAND = "Academic Paper Search"
+TECHNICAL_ID = "nature-academic-search"
 
 
 def project_version() -> str:
@@ -103,10 +105,27 @@ def test_skill_routes_chinese_research_requests_and_reports_verification() -> No
 def test_codex_skill_interface_targets_chinese_researchers() -> None:
     interface = load_yaml(PLUGIN_SKILL / "agents" / "openai.yaml")["interface"]
 
-    assert interface["display_name"] == "Nature Academic Search"
+    assert interface["display_name"] == DISPLAY_BRAND
     assert "文献" in interface["short_description"]
     assert "$nature-academic-search" in interface["default_prompt"]
     assert "检索" in interface["default_prompt"]
+
+
+def test_display_brand_changes_without_renaming_skill_or_plugins() -> None:
+    skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    codex_manifest = load_json(PLUGIN / ".codex-plugin" / "plugin.json")
+    claude_manifest = load_json(PLUGIN / ".claude-plugin" / "plugin.json")
+    claude_marketplace = load_json(ROOT / ".claude-plugin" / "marketplace.json")
+
+    assert f"# {DISPLAY_BRAND}" in skill
+    assert "# Nature Academic Search" not in skill
+    assert codex_manifest["name"] == TECHNICAL_ID
+    assert codex_manifest["interface"]["displayName"] == DISPLAY_BRAND
+    assert DISPLAY_BRAND in codex_manifest["description"]
+    assert claude_manifest["name"] == TECHNICAL_ID
+    assert DISPLAY_BRAND in claude_manifest["description"]
+    assert claude_marketplace["plugins"][0]["name"] == TECHNICAL_ID
+    assert DISPLAY_BRAND in claude_marketplace["plugins"][0]["description"]
 
 
 def test_marketplaces_point_to_the_packaged_plugin() -> None:
