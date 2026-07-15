@@ -1,6 +1,6 @@
 {
   "name": "nature-academic-search",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
   "author": {
     "name": "wp-a",

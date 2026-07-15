@@ -37,6 +37,12 @@ PyPI and TestPyPI each require a one-time Trusted Publisher mapping:
 The workflow uses GitHub OIDC and must not contain a PyPI API token. Create the
 matching protected GitHub environments before publishing.
 
+## Distribution policy
+
+PyPI is a low-maintenance runtime distribution for the pinned `uvx` plugin
+command. Publish only when code, fixes, embedded skill behavior, or required
+metadata changes. Do not create a second package for the display brand.
+
 ## Release checklist
 
 Choose the intended semantic version before starting and use it consistently:
@@ -50,8 +56,10 @@ VERSION=x.y.z
    both plugin manifests, Claude marketplace metadata, tests, and the plugin
    `.mcp.json` pin. The Codex marketplace has no version field.
 3. Run every pull request gate and explicit network smoke test.
-4. Trigger `publish.yml` with `testpypi`; install the uploaded wheel in a clean
-   environment and verify all four MCP tools.
+4. If the TestPyPI Trusted Publisher is configured, trigger `publish.yml` with
+   `testpypi`; install the uploaded wheel in a clean environment and verify all
+   four MCP tools. Otherwise record the skip and require a clean local wheel
+   install plus a successful pull-request build before production publishing.
 5. Create tag and GitHub release `v${VERSION}`. Publishing the release triggers
    the production PyPI environment.
 6. Install from public PyPI, run `nature-academic-search preflight`, and validate

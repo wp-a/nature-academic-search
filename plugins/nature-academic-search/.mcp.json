@@ -4,7 +4,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "nature-academic-search==0.1.1",
+        "nature-academic-search==0.1.2",
         "nature-academic-search-mcp"
       ]
     }
