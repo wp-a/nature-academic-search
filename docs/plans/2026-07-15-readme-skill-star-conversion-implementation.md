@@ -43,7 +43,8 @@ def test_readme_presents_the_chinese_research_workflow() -> None:
 
 Extend the existing synchronized-skill test or add a focused test requiring
 Chinese trigger phrases, task routing, the four verification states, the result
-report contract, and both reference links.
+report contract, both reference links, and Chinese Codex UI metadata whose
+default prompt explicitly names `$nature-academic-search`.
 
 ```python
 def test_skill_routes_chinese_research_requests_and_reports_verification() -> None:
@@ -87,6 +88,7 @@ git commit -m "test: define README and skill conversion contracts"
 **Files:**
 - Modify: `SKILL.md`
 - Modify: `plugins/nature-academic-search/skills/nature-academic-search/SKILL.md`
+- Modify: `plugins/nature-academic-search/skills/nature-academic-search/agents/openai.yaml`
 - Reference: `references/search-workflows.md`
 - Reference: `references/citation-files.md`
 
@@ -116,6 +118,10 @@ cmp SKILL.md plugins/nature-academic-search/skills/nature-academic-search/SKILL.
 ```
 
 Expected: exit code 0 with no output.
+
+Regenerate `agents/openai.yaml` with a Chinese short description and a concise
+Chinese default prompt that explicitly invokes `$nature-academic-search`. Keep
+the existing display name and do not add icons or brand fields.
 
 **Step 3: Run the focused plugin tests**
 
@@ -267,11 +273,11 @@ git diff --stat ffc93ff..HEAD
 Expected: only the design, plan, tests, README, and synchronized skill files are
 changed locally; remote metadata is verified separately.
 
-**Step 5: Push and verify CI**
+**Step 5: Complete the feature branch and verify CI**
 
-```bash
-git push origin main
-gh run watch --exit-status
-```
+Use the required `finishing-a-development-branch` workflow to select and execute
+the integration path. Do not push the feature branch directly into `main` without
+the selected integration step. After the selected push or merge, watch the
+resulting CI run with `gh run watch --exit-status`.
 
 Expected: the post-push CI matrix and build job complete successfully.
