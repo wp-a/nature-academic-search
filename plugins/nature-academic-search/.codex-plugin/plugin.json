@@ -1,6 +1,6 @@
 {
   "name": "nature-academic-search",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Search, verify, deduplicate, and export academic literature across PubMed, CrossRef, and arXiv.",
   "author": {
     "name": "wp-a",
