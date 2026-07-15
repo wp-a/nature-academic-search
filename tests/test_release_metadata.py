@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 try:
@@ -8,10 +9,32 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_VERSION = "0.1.1"
 
 
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
+
+
+def read_json(path: str) -> dict:
+    return json.loads(read(path))
+
+
+def test_release_version_is_synchronized_across_package_and_plugins() -> None:
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        package_version = tomllib.load(handle)["project"]["version"]
+
+    codex_manifest = read_json("plugins/nature-academic-search/.codex-plugin/plugin.json")
+    claude_manifest = read_json("plugins/nature-academic-search/.claude-plugin/plugin.json")
+    claude_marketplace = read_json(".claude-plugin/marketplace.json")
+    mcp = read_json("plugins/nature-academic-search/.mcp.json")
+    mcp_args = mcp["mcpServers"]["nature-academic-search"]["args"]
+
+    assert package_version == RELEASE_VERSION
+    assert codex_manifest["version"] == RELEASE_VERSION
+    assert claude_manifest["version"] == RELEASE_VERSION
+    assert claude_marketplace["metadata"]["version"] == RELEASE_VERSION
+    assert f"nature-academic-search=={RELEASE_VERSION}" in mcp_args
 
 
 def test_project_declares_mit_license_file() -> None:
@@ -88,6 +111,6 @@ def test_maintenance_runbook_records_release_gates() -> None:
         "python -m pytest",
         "twine check",
         "claude plugin validate --strict",
-        "v0.1.0",
+        "VERSION",
     ):
         assert required in runbook
