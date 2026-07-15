@@ -1,4 +1,4 @@
 interface:
-  display_name: "Nature Academic Search"
+  display_name: "Academic Paper Search"
   short_description: "跨 PubMed、CrossRef、arXiv 检索、核验并导出可信文献"
   default_prompt: "使用 $nature-academic-search 检索并核验这个研究主题的文献，去重后区分正式论文与预印本。"

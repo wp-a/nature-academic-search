@@ -1,7 +1,7 @@
 {
   "name": "nature-academic-search",
   "version": "0.1.1",
-  "description": "Search, verify, deduplicate, and export academic literature across PubMed, CrossRef, and arXiv.",
+  "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
   "author": {
     "name": "wp-a",
     "url": "https://github.com/wp-a"
@@ -12,9 +12,9 @@
   "keywords": ["academic-search", "arxiv", "citations", "crossref", "pubmed"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Nature Academic Search",
-    "shortDescription": "Verified multi-source literature search",
-    "longDescription": "Search PubMed, CrossRef, and arXiv; resolve identifiers; deduplicate records; build MeSH strategies; and export citations.",
+    "displayName": "Academic Paper Search",
+    "shortDescription": "Verified multi-source academic paper search",
+    "longDescription": "Academic Paper Search across PubMed, CrossRef, and arXiv; resolve identifiers, deduplicate records, build MeSH strategies, and export citations.",
     "developerName": "wp-a",
     "category": "Research",
     "capabilities": ["Search", "Citations"],

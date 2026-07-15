@@ -1,8 +1,10 @@
 <div align="center">
 
-# Nature Academic Search
+# Academic Paper Search
 
 **让 Codex / Claude Code 完成可复现的文献检索、核验与引用导出。**
+
+安装标识仍为 `nature-academic-search`，现有命令与配置无需迁移。
 
 不止返回几个论文标题：同时检索 PubMed、CrossRef 和 arXiv，合并重复记录，核验 DOI / PMID / arXiv ID，区分正式论文与预印本，并把来源失败如实写进结果。
 
@@ -91,7 +93,7 @@ bash install.sh researcher@example.com
 
 ## 为什么是“核验优先”
 
-| 常见检索输出 | Nature Academic Search |
+| 常见检索输出 | Academic Paper Search |
 |---|---|
 | 只给标题和链接 | 同时保留查询、检索日期、标识符与来源追踪 |
 | 多库结果重复出现 | 按 DOI、PMID、arXiv ID、题名与年份合并 |

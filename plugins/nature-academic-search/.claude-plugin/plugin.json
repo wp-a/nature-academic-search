@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "nature-academic-search",
   "version": "0.1.1",
-  "description": "Search, verify, deduplicate, and export academic literature across PubMed, CrossRef, and arXiv.",
+  "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
   "author": {
     "name": "wp-a",
     "url": "https://github.com/wp-a"

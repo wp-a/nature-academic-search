@@ -7,7 +7,7 @@ description: >-
   CrossRef, and arXiv.
 ---
 
-# Nature Academic Search
+# Academic Paper Search
 
 使用捆绑的 MCP 服务组织可复现检索。把每条记录当作待核验的证据，不把搜索结果当作可凭空补全的引用。
 
