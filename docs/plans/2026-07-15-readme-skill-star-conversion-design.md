@@ -1,7 +1,7 @@
 # README and Skill Star Conversion Design
 
-**Date:** 2026-07-15  
-**Status:** Approved  
+**Date:** 2026-07-15
+**Status:** Approved
 **Primary audience:** Chinese-speaking researchers using Codex or Claude Code
 
 ## Objective
