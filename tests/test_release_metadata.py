@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_VERSION = "0.1.1"
+RELEASE_VERSION = "0.1.2"
 DISPLAY_BRAND = "Academic Paper Search"
 TECHNICAL_ID = "nature-academic-search"
 
@@ -130,5 +130,7 @@ def test_maintenance_runbook_records_release_gates() -> None:
         "twine check",
         "claude plugin validate --strict",
         "VERSION",
+        "low-maintenance runtime distribution",
+        "If the TestPyPI Trusted Publisher is configured",
     ):
         assert required in runbook
