@@ -5,7 +5,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,3 +58,25 @@ def test_identifier_detection_accepts_urls_and_versions() -> None:
     assert server.detect_id_type("PMID:12345678") == "pmid"
     assert server.detect_id_type("https://arxiv.org/abs/2401.12345v2") == "arxiv"
 
+
+def test_explicit_legacy_sources_are_forwarded_without_expansion() -> None:
+    server = load_server()
+    expected = {
+        "total": 0,
+        "sources_queried": ["crossref", "pubmed", "arxiv"],
+        "raw_result_count": 0,
+        "result_count": 0,
+        "results": [],
+        "errors": None,
+    }
+    legacy_sources = ["crossref", "pubmed", "arxiv"]
+
+    with patch.object(
+        server,
+        "search_all",
+        new=AsyncMock(return_value=expected),
+    ) as search_all:
+        result = json.loads(server.search_papers("prime editing", sources=legacy_sources))
+
+    assert result == expected
+    assert search_all.await_args.args[:3] == ("prime editing", legacy_sources, 5)
