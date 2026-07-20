@@ -71,8 +71,10 @@ class FakeSource:
     def __init__(self, result: dict | None = None, error: Exception | None = None):
         self.result = result
         self.error = error
+        self.calls: list[tuple[str, int, dict]] = []
 
     def search(self, query: str, rows: int = 5, **_: object) -> dict:
+        self.calls.append((query, rows, dict(_)))
         if self.error:
             raise self.error
         assert query == "prime editing"
@@ -109,5 +111,151 @@ def test_search_all_preserves_partial_results_and_reports_failure() -> None:
     assert result["raw_result_count"] == 2
     assert result["result_count"] == 1
     assert result["sources_queried"] == ["crossref", "pubmed", "arxiv"]
+    assert result["sources_succeeded"] == ["crossref", "arxiv"]
+    assert result["sources_skipped"] == []
     assert result["results"][0]["sources"] == ["crossref", "arxiv"]
-    assert result["errors"] == [{"source": "pubmed", "error": "rate limited"}]
+    assert result["errors"][0]["source"] == "pubmed"
+    assert result["errors"][0]["error"] == "rate limited"
+
+
+def test_search_all_uses_five_default_publication_sources() -> None:
+    source_names = ["crossref", "pubmed", "arxiv", "openalex", "europe_pmc"]
+    adapters = {
+        source: FakeSource({"total": 0, "results": [], "source_meta": {}})
+        for source in source_names
+    }
+
+    result = asyncio.run(
+        search_all(
+            "prime editing",
+            None,
+            rows=5,
+            adapters=adapters,
+        )
+    )
+
+    assert result["sources_queried"] == source_names
+    assert result["sources_succeeded"] == source_names
+    assert result["sources_skipped"] == []
+    assert result["errors"] is None
+    assert all(adapter.calls for adapter in adapters.values())
+
+
+def test_pubmed_and_europe_pmc_merge_by_pmid_and_preserve_provenance() -> None:
+    records = [
+        {
+            "entity_type": "publication",
+            "title": "Example study",
+            "year": 2025,
+            "pmid": "12345678",
+            "source": "pubmed",
+            "source_id": "12345678",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678",
+        },
+        {
+            "entity_type": "publication",
+            "title": "Example study",
+            "year": 2025,
+            "pmid": "12345678",
+            "pmcid": "PMC1234567",
+            "source": "europe_pmc",
+            "source_id": "MED:12345678",
+            "source_url": "https://europepmc.org/article/MED/12345678",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert len(merged) == 1
+    assert merged[0]["pmcid"] == "PMC1234567"
+    assert merged[0]["sources"] == ["pubmed", "europe_pmc"]
+    assert merged[0]["source_records"] == [
+        {
+            "source": "pubmed",
+            "source_id": "12345678",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678",
+        },
+        {
+            "source": "europe_pmc",
+            "source_id": "MED:12345678",
+            "source_url": "https://europepmc.org/article/MED/12345678",
+        },
+    ]
+
+
+def test_citation_counts_remain_source_attributed_after_merge() -> None:
+    records = [
+        {
+            "title": "Example study",
+            "doi": "10.1000/example",
+            "source": "openalex",
+            "citation_count": 7,
+            "citation_count_source": "openalex",
+            "citation_counts": {"openalex": 7},
+        },
+        {
+            "title": "Example study",
+            "doi": "10.1000/example",
+            "source": "crossref",
+            "citation_count": 9,
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert merged[0]["citation_count"] == 9
+    assert merged[0]["citation_count_source"] == "crossref"
+    assert merged[0]["citation_counts"] == {"openalex": 7, "crossref": 9}
+
+
+def test_conflicting_identifiers_are_retained_without_overwrite() -> None:
+    records = [
+        {
+            "title": "Example study",
+            "year": 2025,
+            "doi": "10.1000/example",
+            "pmid": "12345678",
+            "source": "openalex",
+        },
+        {
+            "title": "Example study",
+            "year": 2025,
+            "doi": "10.1000/example",
+            "pmid": "87654321",
+            "source": "europe_pmc",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert merged[0]["pmid"] == "12345678"
+    assert merged[0]["conflicts"] == [
+        {
+            "field": "pmid",
+            "kept": "12345678",
+            "incoming": "87654321",
+            "source": "europe_pmc",
+        }
+    ]
+
+
+def test_publication_and_trial_titles_never_merge() -> None:
+    records = [
+        {
+            "entity_type": "publication",
+            "title": "Example intervention",
+            "year": 2025,
+            "source": "pubmed",
+        },
+        {
+            "entity_type": "trial",
+            "title": "Example intervention",
+            "year": 2025,
+            "nct_id": "NCT01234567",
+            "source": "clinicaltrials_gov",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert len(merged) == 2

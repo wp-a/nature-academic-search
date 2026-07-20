@@ -42,3 +42,23 @@ def test_source_fixtures_are_minimal_and_fictional() -> None:
         assert data
         assert "Example" in path.read_text(encoding="utf-8")
         assert path.stat().st_size < 5_000
+
+
+def test_registry_exposes_capabilities_and_builds_only_selected_adapters() -> None:
+    from nature_academic_search.sources.registry import (
+        build_adapters,
+        source_capabilities,
+    )
+
+    assert source_capabilities("openalex") == frozenset(
+        {"search", "lookup", "type_filter"}
+    )
+    assert source_capabilities("europe_pmc") == frozenset(
+        {"search", "lookup", "type_filter"}
+    )
+
+    adapters = build_adapters(["openalex", "europe_pmc"])
+
+    assert set(adapters) == {"openalex", "europe_pmc"}
+    assert adapters["openalex"].name == "openalex"
+    assert adapters["europe_pmc"].name == "europe_pmc"

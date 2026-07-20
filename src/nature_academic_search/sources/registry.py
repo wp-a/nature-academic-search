@@ -17,3 +17,43 @@ SOURCE_ENTITY_TYPES = {
     for source in (*DEFAULT_PUBLICATION_SOURCES, *OPTIONAL_PUBLICATION_SOURCES)
 }
 SOURCE_ENTITY_TYPES.update({source: "trial" for source in TRIAL_SOURCES})
+
+SOURCE_CAPABILITIES = {
+    "crossref": frozenset({"search", "lookup", "type_filter", "citation"}),
+    "pubmed": frozenset({"search", "lookup", "mesh"}),
+    "arxiv": frozenset({"search", "lookup"}),
+    "openalex": frozenset({"search", "lookup", "type_filter"}),
+    "europe_pmc": frozenset({"search", "lookup", "type_filter"}),
+    "semantic_scholar": frozenset({"search", "lookup", "enrich"}),
+    "clinicaltrials_gov": frozenset({"search", "lookup"}),
+}
+
+
+def source_capabilities(source: str) -> frozenset[str]:
+    try:
+        return SOURCE_CAPABILITIES[source]
+    except KeyError as exc:
+        raise ValueError(f"Unknown academic source: {source}") from exc
+
+
+def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:
+    """Construct only the selected adapters to keep optional sources lazy."""
+    from . import (
+        ArxivSource,
+        CrossRefSource,
+        EuropePmcSource,
+        OpenAlexSource,
+        PubMedSource,
+    )
+
+    factories = {
+        "crossref": CrossRefSource,
+        "pubmed": PubMedSource,
+        "arxiv": ArxivSource,
+        "openalex": OpenAlexSource,
+        "europe_pmc": EuropePmcSource,
+    }
+    unknown = [source for source in sources if source not in factories]
+    if unknown:
+        raise ValueError(f"Adapters are not available for: {unknown}")
+    return {source: factories[source]() for source in sources}
