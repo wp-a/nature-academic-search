@@ -1,54 +1,35 @@
-# Search Strategy Guide
+# 检索策略
 
-## Query Construction
+## 从问题到查询
 
-### From topic to query
-1. Extract core concepts from the research question
-2. Identify synonyms and alternate spellings for each concept
-3. For biomedical topics: map concepts to MeSH terms via `pubmed_lookup_mesh`
-4. Assemble Boolean query: `(concept1 OR synonym1) AND (concept2 OR synonym2)`
-5. Add field qualifiers for precision: `[Title/Abstract]`, `[MeSH Terms]`, `[Journal]`
-6. Test and refine — if >500 results, add filters; if <10, broaden terms
+1. 提取研究问题的核心概念。
+2. 为每个概念列出同义词、缩写和拼写变体。
+3. 生物医学主题用 `lookup_mesh` 核验 MeSH 描述词。
+4. 组合布尔查询，并保存未加数据库字段标签的人类可读版本。
+5. 只在用户要求或范围需要时增加日期、语言和文献类型过滤。
+6. 小批量测试相关性后再增加结果数；修改查询时同时报告原查询和修订查询。
 
-### Query templates by domain
+## 来源选择
 
-| Domain | Template |
-|--------|----------|
-| Medical | `("disease"[MeSH] OR "disease"[tiab]) AND ("treatment"[MeSH] OR "treatment"[tiab])` |
-| Molecular | `("gene"[tiab] OR "protein"[tiab]) AND ("pathway"[tiab] OR "mechanism"[tiab])` |
-| Epidemiology | `("condition"[MeSH]) AND (incidence OR prevalence OR "risk factor")` |
-| Methods | `("method"[tiab]) AND ("application"[tiab]) AND (validation OR comparison)` |
+| 任务 | 建议来源 |
+|---|---|
+| 生物医学论文 | PubMed + Europe PMC + CrossRef + OpenAlex |
+| 跨学科发现 | 默认五论文源 |
+| CS、物理、数学预印本 | arXiv + CrossRef + OpenAlex |
+| DOI/出版商元数据 | CrossRef |
+| 引用图谱补充 | 显式 Semantic Scholar 搜索或强 ID 富化 |
+| 试验注册 | ClinicalTrials.gov，`entity_type="trial"` |
 
-## Source Selection
+本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方；这些来源只能作为人工或机构数据库补充。
 
-### Decision tree
-```
-Topic is medical/clinical?
-├─ Yes → PubMed primary, Google Scholar secondary
-└─ No → Topic is CS/physics/math?
-    ├─ Yes → arXiv primary, Semantic Scholar secondary
-    └─ No → CrossRef primary, Semantic Scholar secondary
-```
+## 排序
 
-### Journal scope awareness
-- Nature Portfolio journals: use `nature.com` domain filter
-- Chinese journals: CNKI/万方 not indexed in PubMed/CrossRef — flag for manual check
-- Preprints only: arXiv, bioRxiv, medRxiv — no peer review status available
+- 默认保留各 API 相关性顺序，并说明来源。
+- “最新”按可比较的发表日期排序，同时保留预印本状态。
+- 引用指标排序必须选定一个来源字段；不同来源的 `citation_counts` 不相加。
+- 系统综述初筛不应使用未经验证的模型自定义综合分数替代正式筛选标准。
 
-## Deduplication Logic
+## 去重
 
-See [Dedup Engine](dedup-engine.md) for the unified deduplication strategy shared by Workflows 1, 2, and 5a.
-
-## Result Ranking
-
-### Default: relevance
-Use the search engine's default relevance ranking.
-
-### Date-weighted
-When user requests "recent" or "latest": sort by publication date descending.
-
-### Citation-weighted
-When user cares about impact: sort by citation count descending (available via CrossRef or Semantic Scholar).
-
-### Combined scoring
-For systematic reviews: `score = relevance * 0.5 + recency * 0.3 + citations * 0.2`
+使用 MCP 返回的强标识符、`sources`、`source_records` 和 `conflicts`。详细规则见
+[Dedup Engine](dedup-engine.md)，但实际工具输出优先于文档示例。

@@ -5,6 +5,8 @@
 - Support Python 3.10-3.13.
 - Keep MCP Python SDK on `mcp>=1.27,<2` until a tested v2 migration is released.
 - Preserve `search_papers`, `get_paper_by_id`, `get_citation`, and `lookup_mesh`.
+- Preserve publication/trial entity separation and explicit Semantic Scholar
+  enrichment semantics.
 - Keep `pyproject.toml`, plugin manifests, versioned marketplace metadata, and
   `.mcp.json` on the same semantic version.
 
@@ -14,6 +16,7 @@ Run from the repository root:
 
 ```bash
 python -m pip install -e ".[test]"
+python scripts/sync_skill.py --check
 python -m ruff check src tests
 python -m pytest
 python -m pytest mcp-server/tests
@@ -24,6 +27,10 @@ claude plugin validate --strict plugins/nature-academic-search
 
 Also run the Codex plugin validator from `plugin-creator` and the skill validator
 from `skill-creator` when either manifest or `SKILL.md` changes.
+
+The canonical skill is `SKILL.md`. After changing it or its packaged references,
+run `python scripts/sync_skill.py`, then rerun `--check`; do not hand-maintain a
+different Claude/Codex plugin copy.
 
 ## Trusted Publisher setup
 
@@ -72,6 +79,9 @@ VERSION=x.y.z
 - Review monthly Dependabot updates for Python and GitHub Actions.
 - Investigate scheduled network-smoke failures by source before changing retry
   behavior.
+- Keep the scheduled smoke workflow separate from push/PR CI. It should make at
+  most one bounded request per source, skip Semantic Scholar when its secret is
+  absent, and never print credential values.
 - Add regression tests before changing parsing, deduplication, or client install
   commands.
 - Test MCP SDK v2 in a separate branch; do not relax the `<2` bound without a

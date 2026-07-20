@@ -49,11 +49,13 @@ Strategy reference for extracting citations from documents. Used by Workflow 2 (
 ## Resolution Priority
 
 For each extracted reference:
-1. DOI → `get_paper_by_doi` or `search_crossref`
-2. PMID → `pubmed_fetch_articles`
-3. arXiv ID → `search_arxiv`
-4. Title + first author → `pubmed_search_articles` or `search_crossref`
-5. Citation key only (unresolvable from .bib) → `manual_needed`
+1. DOI / PMID / PMCID / arXiv ID → `get_paper_by_id`
+2. Title + first author → `search_papers` with publication sources, then verify candidates
+3. Citation key only (unresolvable from .bib) → `manual_needed`
+
+`get_paper_by_id` also accepts OpenAlex IDs, Semantic Scholar URLs (or explicit
+`id_type="semantic_scholar"`), and NCT IDs. NCT resolves a trial registration,
+not a paper citation.
 
 ## Classification Labels
 
@@ -62,5 +64,4 @@ For each extracted reference:
 | `verified` | Retrieved metadata matches document metadata (title + journal + year all match) |
 | `mismatch` | Retrieved metadata exists but conflicts with document |
 | `not_found` | No match found in any database |
-| `suspicious` | Match found but metadata incomplete (e.g., missing DOI, only partial title match) |
-| `manual_needed` | Cannot resolve to a database query (no DOI/PMID, title too generic) |
+| `manual_needed` | Metadata is incomplete, no strong ID resolves, or title is too generic |

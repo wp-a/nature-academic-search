@@ -1,24 +1,35 @@
-# Unified Academic Search MCP Server
+# Academic Paper Search MCP Server
 
-统一的学术搜索 MCP 服务器，整合 CrossRef、PubMed、arXiv 三个数据源。
+面向 Codex 与 Claude Code 的兼容入口。对外仍只暴露四个工具，默认论文检索覆盖 CrossRef、PubMed、
+arXiv、OpenAlex、Europe PMC；Semantic Scholar 为显式搜索/富化源，ClinicalTrials.gov 为独立 trial 源。
 
 ## 工具
 
 | 工具 | 功能 |
-|------|------|
-| `search_papers` | 统一搜索，支持多数据源并发 |
-| `get_paper_by_id` | 按 DOI/PMID/arXiv ID 获取详情 |
-| `get_citation` | 格式化引用 (apa/nature/ieee 等) |
-| `lookup_mesh` | MeSH 词表查询 |
+|---|---|
+| `search_papers` | 多源 publication 搜索，或以 `entity_type="trial"` 搜索试验注册 |
+| `get_paper_by_id` | 解析 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar URL、NCT ID |
+| `get_citation` | 格式化论文引用；拒绝把 NCT 注册伪装成论文 |
+| `lookup_mesh` | 查询 PubMed MeSH 描述词 |
+
+旧调用 `sources=["crossref", "pubmed", "arxiv"]` 保持原样，不会自动扩展。
 
 ## 配置
 
-环境变量:
-- `PUBMED_EMAIL` - 必填，NCBI 要求
-- `NCBI_API_KEY` - 可选，提升速率限制
+```bash
+export PUBMED_EMAIL=researcher@example.com
+export NCBI_API_KEY=
+export OPENALEX_API_KEY=
+export SEMANTIC_SCHOLAR_API_KEY=
+```
 
-配置文件: `config.toml`
+API key 均为可选；超时和空 key 也可在 `config.toml` 配置。不要把真实凭据提交到仓库。
 
-## 使用
+本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方。
 
-Claude Code 会自动加载此服务器。工具通过 `academic-search` skill 调用。
+## 验证
+
+```bash
+nature-academic-search preflight
+python -m pytest mcp-server/tests
+```

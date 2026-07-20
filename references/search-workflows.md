@@ -1,58 +1,71 @@
-# Search Workflows
+# 检索工作流
 
-## Source routing
+## 1. 先定义实体与范围
 
-| Need | Sources | Notes |
-|---|---|---|
-| Biomedical or clinical literature | PubMed + CrossRef | Build MeSH terms first when recall matters |
-| DOI or publisher metadata | CrossRef | Verify returned DOI against title and year |
-| Computer science, physics, or preprints | arXiv + CrossRef | Label preprints explicitly |
-| Broad mixed-domain review | PubMed + CrossRef + arXiv | Expect partial overlap and deduplication |
+先确认研究概念、日期范围、文献类型、结果数量、语言和是否接受预印本。再确认目标实体：
 
-Do not imply that Google Scholar, Semantic Scholar, Scopus, Web of Science, CNKI,
-or other sources were searched unless a separate available tool actually queried
-them.
+- 论文与预印本：`entity_type="publication"`（默认）。
+- ClinicalTrials.gov 试验注册：`entity_type="trial"`。
 
-## Query construction
+两种实体分开检索、分开报告，禁止只凭相同题名合并。
 
-1. Split the question into concepts: population/system, intervention/exposure,
-   comparator, outcome, method, and exclusions as applicable.
-2. Create one synonym group per concept.
-3. For PubMed, call `lookup_mesh` for stable biomedical concepts. Combine MeSH
-   descriptors with title/abstract synonyms.
-4. Keep a human-readable query record. Database syntax is not interchangeable;
-   adapt field tags rather than passing a PubMed query verbatim to every source.
-5. Add date, article-type, and language filters only when the user requested them
-   or the scope requires them.
+## 2. 构造查询
 
-## Multi-source search
+1. 把问题拆成人群/系统、干预或暴露、比较、结局、方法和排除项。
+2. 为每个概念建立同义词组。
+3. 生物医学主题先用 `lookup_mesh` 核验 MeSH，再组合题名/摘要自由词。
+4. 保存人类可读的原查询。PubMed 字段语法不能原样复制给其他来源。
+5. 只在用户要求或范围需要时添加日期、类型和语言过滤。
 
-Call `search_papers` with explicit `sources` when scope is known. Start with a
-small result count while refining the query, then increase it for the final pass.
+## 3. 选择来源
 
-Inspect:
+论文检索省略 `sources` 时默认查询 `crossref`、`pubmed`、`arxiv`、`openalex`、
+`europe_pmc`。范围明确时可显式传入子集；显式三源调用保持三源，不会静默扩展。
 
-- `errors`: source failures that must be disclosed;
-- `raw_result_count`: records before deduplication;
-- `result_count`: unique records returned;
-- `sources`: provenance merged into each record.
+`semantic_scholar` 有两种使用方式：
 
-If a source fails, keep successful records and retry only the failed source. Avoid
-repeating successful requests unnecessarily.
+- 显式搜索：`sources=["semantic_scholar"]`；
+- 去重后富化：`enrich=["semantic_scholar"]`。
 
-## Verification
+富化只使用 DOI、PMID、arXiv 等强标识符。没有强 ID 的记录进入 `sources_skipped`，不做题名推测。
 
-For records used in a manuscript, recommendation, or export:
+试验注册使用 `search_papers(..., entity_type="trial")`，默认只查询 `clinicaltrials_gov`。
+publication 与 trial 源混用会被拒绝。
 
-1. Resolve DOI, PMID, or arXiv ID with `get_paper_by_id`.
-2. Compare title, first author, venue, year, and identifier.
-3. Classify the record as `verified`, `mismatch`, `not_found`, or `manual_needed`.
-4. Explain mismatches field by field. Never repair metadata by intuition.
-5. Prefer the publisher record when it matches a preprint, while preserving the
-   preprint identifier and relationship.
+## 4. 检查部分成功
 
-## Result reporting
+每次调用都检查：
 
-Return the query, databases, search date, date cutoff, inclusion rules, source
-failures, and unique results. Include identifiers and provenance. Separate
-peer-reviewed papers, preprints, and unresolved records.
+- `sources_queried`：实际尝试的来源；
+- `sources_succeeded`：有效响应，包括零结果；
+- `sources_skipped`：未执行的富化及原因；
+- `errors`：请求失败来源；
+- `raw_result_count` / `result_count`：去重前后数量；
+- `source_meta`：来源级速率、成本或版本元数据。
+
+保留成功记录，只重试失败来源。不要因为代码中存在适配器，就声称该来源在本次被查询。
+
+## 5. 去重与冲突
+
+先按同一 `entity_type` 内的 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT ID
+合并，再使用标准化题名与年份作为弱回退。保留 `sources`、`source_records` 和 `conflicts`；
+不得用一个来源的冲突值静默覆盖另一个来源。
+
+引用次数保留 `citation_counts` 和 `citation_count_source`。不同来源计数不相加；排序时必须注明采用的来源。
+
+## 6. 核验与引用
+
+对进入论文、建议或导出的记录：
+
+1. 用 `get_paper_by_id` 解析 DOI、PMID、PMCID、arXiv、OpenAlex 或 Semantic Scholar ID。
+2. 比较题名、首位作者、期刊/平台、年份和标识符。
+3. 标记 `verified`、`mismatch`、`not_found` 或 `manual_needed`。
+4. 有 DOI 时 `get_citation` 优先使用 CrossRef 格式化；无 DOI 时返回基础引用并标明 `metadata_source`。
+5. NCT 是试验注册，不生成论文引用；其关联 PMID 需作为论文另行解析。
+
+## 7. 结果报告
+
+报告原始及修订查询、检索日期和截止日期、纳入/排除规则、来源状态、唯一结果、标识符、
+来源追踪、指标来源与核验状态。分开列出正式论文、预印本、trial 和未解决记录。
+
+本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方；需要这些数据库时明确提示人工或机构检索。

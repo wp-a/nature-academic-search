@@ -1,29 +1,16 @@
-# Workflow 2: Citation Verification
+# Workflow 2：引用核验
 
-**Purpose:** Verify references in a document (.docx / .tex / .txt) against databases.
+**目的：** 核验 `.docx`、`.tex`、`.bib` 或 `.txt` 中的参考文献。
 
-**Uses:**
-- [Citation Parser](../citation-parser.md) — extraction strategies per source format.
-- [Dedup Engine](../dedup-engine.md) — collapse duplicate candidate matches before classification.
+## 步骤
 
-## Procedure
+1. 按 [Citation Parser](../citation-parser.md) 提取 DOI、PMID、PMCID、arXiv ID 和候选题名。
+2. 有强标识符时调用 `get_paper_by_id`；无标识符时用 `search_papers` 找候选，再人工比较。
+3. 比较题名、作者、期刊、年份和标识符。
+4. 标记 `verified`、`mismatch`、`not_found` 或 `manual_needed`。
+5. 报告总数、各状态数量、解析来源、标识符和逐字段冲突。
+6. 只有已解析论文可调用 `get_citation`；NCT 试验注册不生成论文引用。
 
-1. **Extract citations** from document using [Citation Parser](../citation-parser.md).
-   Prefer T1 sources for primary verification (CrossRef DOI lookup → PubMed PMID confirmation). Use T2 (Semantic Scholar) for cross-checking ambiguous or missing results. See [Source Tiers](../source-tiers.md) for full routing.
-2. **Resolve each citation:**
-   - DOI → `search_crossref` or `get_paper_by_doi`
-   - PMID → `pubmed_fetch_articles`
-   - arXiv ID → `search_arxiv`
-   - Title + first author → `pubmed_search_articles` or `search_crossref`
-3. **Compare** retrieved metadata vs. document metadata (title, journal, year).
-4. **Classify** into: `verified` | `mismatch` | `not_found` | `suspicious` | `manual_needed`.
-   See [Citation Parser: Classification Labels](../citation-parser.md#classification-labels) for criteria.
-5. **Generate report:**
-   - Summary: total / verified / mismatched / not_found / suspicious / manual_needed counts.
-   - Detail table: each reference with status, DOI/PMID, resolution notes.
+需要 Semantic Scholar 复核时必须显式搜索，或对已有强 ID 记录使用 enrichment。来源失败时保留其他核验结果并披露 `errors`。
 
-## Error Modes
-
-- **Unsupported document format:** report and request .docx, .tex, or .txt.
-- **All references manual_needed:** document may lack identifiers; suggest adding DOIs or PMIDs to the manuscript.
-- **MCP tools partially unavailable:** flag affected references as `manual_needed`.
+本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方，不能把未执行的数据库写入核验范围。

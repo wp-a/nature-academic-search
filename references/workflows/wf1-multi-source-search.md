@@ -1,37 +1,23 @@
-# Workflow 1: Multi-Source Literature Search
+# Workflow 1：多源文献检索
 
-**Purpose:** Search multiple academic databases in parallel, deduplicate, merge, and rank results.
+**目的：** 用稳定的 `search_papers` 工具检索、去重并报告来源状态。
 
-**Prerequisites:** MCP tools available (PubMed, CrossRef, arXiv, and optionally Semantic Scholar / Google Scholar).
+## 步骤
 
-**Uses:** [Dedup Engine](../dedup-engine.md) — deduplication and merge preference logic.
+1. 明确主题、日期、类型、结果数、预印本政策和实体类型。
+2. publication 默认省略 `sources`，使用五个默认论文源；范围明确时显式传子集。
+3. 需要引用图谱补充时设置 `enrich=["semantic_scholar"]`，且只富化有强标识符的记录。
+4. trial 使用 `entity_type="trial"`，默认只查询 `clinicaltrials_gov`。
+5. 检查 `sources_queried`、`sources_succeeded`、`sources_skipped`、`errors`、
+   `raw_result_count` 与 `result_count`。
+6. 查看每条记录的 `sources`、`source_records`、`conflicts` 和来源化 `citation_counts`。
+7. 对拟引用记录调用 `get_paper_by_id`；按正式论文、预印本、trial、未解决记录分组交付。
 
-## Procedure
+## 错误处理
 
-1. **Analyze topic** — identify domain, consult [source routing](../search-strategy.md#source-selection).
-2. **Select sources by tier** — follow [Source Tiers](../source-tiers.md). Always try T1 first; escalate to T2 only if T1 insufficient; use T3 as last resort with explicit user warning.
-3. **Search in parallel** — call all relevant MCP search tools simultaneously:
-   - Biomedical → `pubmed_search_articles`
-   - Cross-disciplinary → `search_crossref`
-   - Preprints → `search_arxiv` / `search_biorxiv` / `search_medrxiv`
-   - Exhaustive → add `search_semantic_scholar` / `search_webofscience` / `search_scopus`
-4. **Deduplicate** — apply [Dedup Engine](../dedup-engine.md) to merged result list.
-5. **Merge and rank** — sort by relevance, date, or citation count per user preference. See [Result Ranking](../search-strategy.md#result-ranking).
-6. **Present results** — unified table with source labels, metadata, and abstract snippets.
+- 单源失败：保留其他来源结果，只重试失败来源。
+- 零结果：先检查查询语法与实体类型，再提出可审计的放宽版本。
+- 富化跳过：报告缺少强 ID，不做题名猜测。
+- trial/publication 混用：修正实体类型和来源，不强制合并。
 
-## Output Format
-
-```
-**Title**: [Paper Title]
-**Authors**: [Author list]
-**Journal**: [Journal name]
-**Year**: [Year]  |  **DOI**: [DOI]  |  **PMID**: [PMID]
-**Citations**: [count if available]
-**Abstract**: [First 200 characters...]
-```
-
-## Error Modes
-
-- **MCP tool unavailable:** report specific failure, continue with remaining tools.
-- **No results:** broaden terms per [Query Construction](../search-strategy.md#query-construction), try alternative sources, suggest user refine query.
-- **All sources empty:** suggest MeSH strategy (Workflow 3) or manual query refinement.
+本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方；需要这些来源时转人工或机构检索。

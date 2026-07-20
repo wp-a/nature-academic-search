@@ -1,16 +1,13 @@
-# Workflow 3: MeSH Search Strategy
+# Workflow 3：MeSH 检索策略
 
-**Purpose:** Build precise PubMed queries from MeSH terms.
+**目的：** 用 PubMed MeSH 描述词构建可复核的生物医学查询。
 
-## Procedure
+## 步骤
 
-1. Use `pubmed_lookup_mesh` to explore terms related to the topic.
-2. Show term hierarchy (broader / narrower / related).
-3. Construct Boolean query: MeSH terms + keywords.
-   See [Query Construction](../search-strategy.md#query-construction) for templates.
-4. Optionally spell-check query with `pubmed_spell_check`.
-5. Execute via `pubmed_search_articles`.
+1. 把研究问题拆成概念组。
+2. 对稳定的生物医学概念调用 `lookup_mesh`，记录候选描述词和 UI。
+3. 每组组合 MeSH 与题名/摘要自由词；概念内用 `OR`，概念间用 `AND`。
+4. 展示最终 PubMed 查询式，不把字段标签原样复制到其他来源。
+5. 使用 `search_papers(..., sources=["pubmed"])` 小批量检查结果，再以可追踪方式修订。
 
-## Output
-
-Final PubMed query string, result count, and top results.
+输出原始主题、已确认 MeSH、自由词、最终查询、修订原因和来源状态。

@@ -1,68 +1,61 @@
 ---
 name: nature-academic-search
 description: >-
-  Use when users ask to 找文献、做文献检索、查论文、核验引用、去重文献、设计 PubMed/MeSH
-  检索式、解析 DOI/PMID/arXiv ID，或导出 RIS、BibTeX、NBIB、ENW；also use for
-  multi-source academic search, citation verification, and reference management across PubMed,
-  CrossRef, and arXiv.
+  Use when users ask to 找文献、做文献检索、查论文、查临床试验、核验引用、去重文献、设计
+  PubMed/MeSH 检索式、解析 DOI/PMID/PMCID/arXiv/OpenAlex/Semantic Scholar/NCT ID，
+  或导出 RIS、BibTeX、NBIB、ENW；also use for multi-source academic search,
+  citation verification, trial registration search, and reference management.
 ---
 
 # Academic Paper Search
 
-使用捆绑的 MCP 服务组织可复现检索。把每条记录当作待核验的证据，不把搜索结果当作可凭空补全的引用。
+使用捆绑的 MCP 服务组织可复现检索。把记录当作待核验的证据，不凭空补齐论文、引用或试验信息。
 
 ## 任务路由
 
 | 用户目标 | 工具或路径 | 完成标准 |
 |---|---|---|
-| 找文献、文献检索、综述初筛 | `search_papers` | 跨指定来源检索、去重并披露失败 |
-| 核验 DOI、PMID、arXiv ID | `get_paper_by_id` | 对照题名、作者、来源、年份和标识符 |
-| 生成单条引用 | `get_citation` | 只格式化已解析的记录 |
+| 找文献、文献检索、综述初筛 | `search_papers` | 按来源检索、去重并披露部分失败 |
+| 查临床试验注册 | `search_papers` + `entity_type="trial"` | 返回 trial 记录，不与论文合并 |
+| 核验标识符 | `get_paper_by_id` | 对照题名、作者/申办方、年份和标识符 |
+| 生成论文引用 | `get_citation` | 只格式化已解析论文；NCT 注册不生成论文引用 |
 | 构建 PubMed 检索式 | `lookup_mesh` | 先确认 MeSH，再组合自由词 |
 | 批量导出引用文件 | 包 CLI | 读取[引用文件流程](references/citation-files.md) |
 
-客户端可能给工具名添加 MCP 前缀；按上表的名称后缀识别。
+客户端可能给工具名添加 MCP 前缀；按名称后缀识别，工具总数仍为四个。
 
-## 来源边界
+## 来源角色
 
-- PubMed：生物医学索引、PMID、MeSH。
-- CrossRef：出版商元数据、DOI 解析。
-- arXiv：预印本及其版本信息。
+- 默认论文源：`crossref`、`pubmed`、`arxiv`、`openalex`、`europe_pmc`。
+- 显式论文源/补充富化：`semantic_scholar`；仅用 DOI、PMID、arXiv 等强标识符富化。
+- 试验注册源：`clinicaltrials_gov`；只用于 `entity_type="trial"`，不是论文数据库。
 
-不要声称检索了 Google Scholar、Semantic Scholar、Web of Science、Scopus、Embase、CNKI
-或其他未连接来源。不要绕过现有工具假装执行原始 API。工具不可用时说明限制；除非用户另行提供可用工具，
-否则停止对应来源，不影响已成功来源。
+按任务选源、过滤和凭据规则见[来源分层](references/source-tiers.md)。未连接 Google Scholar、
+Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些数据库。
 
 ## 执行流程
 
-1. 明确主题、日期范围、文献类型、结果数量和是否接受预印本。仅在缺项会改变结果时提问。
-2. 按来源职责调用 `search_papers`；不要把 PubMed 语法原样复制到其他数据库。
-3. 检查 `errors`、`raw_result_count`、`result_count` 和每条记录的 `sources`。保留部分成功结果。
-4. 对拟引用、标识符冲突或元数据可疑的记录调用 `get_paper_by_id`。
-5. 按题名、作者、来源、年份和标识符判定：
-   - `verified`：关键字段一致；
-   - `mismatch`：字段冲突，逐项列出；
-   - `not_found`：指定来源未返回记录；
-   - `manual_needed`：信息不足，禁止猜测。
-6. 分开报告正式论文、预印本和未解决记录。正式版本与预印本相关时保留两者关系。
+1. 明确主题、日期、文献类型、结果数、是否接受预印本，以及目标是论文还是试验注册。
+2. 论文检索默认调用五源；只有用户要求或确有强标识符时才显式搜索/富化 Semantic Scholar。
+3. 检查 `sources_queried`、`sources_succeeded`、`sources_skipped`、`errors`、
+   `raw_result_count`、`result_count`。实际工具输出才证明某来源被查询。
+4. 对拟引用、标识符冲突或元数据可疑记录调用 `get_paper_by_id`。
+5. 标记 `verified`、`mismatch`、`not_found` 或 `manual_needed`，冲突逐字段说明。
+6. 分开报告正式论文、预印本、trial 和未解决记录。trial 永不按题名与 publication 合并。
 7. 单条引用使用 `get_citation`；批量导出前排除或单列未核验记录。
+
+详细查询构建、部分成功和核验规则见[检索工作流](references/search-workflows.md)。
 
 ## 结果契约
 
-每次检索至少返回：原始查询、实际检索来源、检索日期与截止日期、纳入规则、去重前后数量、结果及
-DOI/PMID/arXiv ID、每条记录的来源追踪、正式论文/预印本分类、核验状态、来源错误和导出格式。
-查询被放宽或改写时，同时展示原查询与修订查询。
-
-## 中文示例
-
-> 找 2022 年以来 GLP-1 受体激动剂与抑郁风险的文献，同时查 PubMed、CrossRef 和 arXiv；
-> 去重、核验 DOI/PMID、区分预印本，并导出 RIS。任一来源失败时继续并说明。
+报告原始/修订查询、检索日期与截止日期、纳入规则、请求来源、`sources_queried`、
+`sources_succeeded`、`sources_skipped`、`errors`、去重前后数量、实体类型、标识符、
+`sources`/`source_records`、冲突和核验状态。引用次数必须保留 `citation_counts` 与
+`citation_count_source`，不得合成无来源的“总引用数”。
 
 ## 证据规则
 
-- 不编造元数据、摘要、引用次数、标识符、开放获取状态或全文结论。
-- 优先按 DOI 合并；其次核验 PMID 或 arXiv ID，再使用标准化题名和年份。
-- 不把预印本描述为同行评审论文，不把来源特定的引用次数描述为绝对值。
-- 不静默扩大无结果查询，不导出未解决记录作为已核验引用。
-
-需要设计检索式、选择来源、排序或核验细节时，读取[检索工作流](references/search-workflows.md)。
+- 不编造元数据、摘要、引用次数、标识符、开放获取状态、全文结论或试验结果。
+- 优先按强标识符合并；弱题名匹配必须限定同一 `entity_type` 并保留冲突。
+- 不把预印本描述为同行评审论文，不把 trial 注册描述为已发表研究。
+- 无结果时不静默放宽查询；来源失败时保留成功结果并说明缺口。

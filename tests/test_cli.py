@@ -45,6 +45,19 @@ def test_preflight_help_does_not_access_network() -> None:
     assert "Check academic source connectivity" in completed.stdout
 
 
+def test_legacy_preflight_script_delegates_to_packaged_command() -> None:
+    completed = subprocess.run(
+        [sys.executable, "scripts/preflight.py", "--help"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "Check academic source connectivity" in completed.stdout
+
+
 def test_citation_help_preserves_legacy_formats() -> None:
     completed = run_module("citation", "--help")
 

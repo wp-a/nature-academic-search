@@ -87,6 +87,30 @@ def test_readme_presents_the_chinese_research_workflow() -> None:
         assert required in readme
 
 
+def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
+    readme = read("README.md")
+
+    for source in (
+        "CrossRef",
+        "PubMed",
+        "arXiv",
+        "OpenAlex",
+        "Europe PMC",
+        "Semantic Scholar",
+        "ClinicalTrials.gov",
+    ):
+        assert source in readme
+    for contract in (
+        'entity_type="trial"',
+        "sources_queried",
+        "sources_succeeded",
+        "sources_skipped",
+        "citation_counts",
+        "试验注册",
+    ):
+        assert contract in readme
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 

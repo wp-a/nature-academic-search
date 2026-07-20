@@ -72,7 +72,22 @@ PubMed contact email in the environment that launches the client:
 export PUBMED_EMAIL=researcher@example.com
 ```
 
-Optionally set `NCBI_API_KEY` for a higher NCBI request limit.
+Optional source credentials:
+
+```bash
+export NCBI_API_KEY=
+export OPENALEX_API_KEY=
+export SEMANTIC_SCHOLAR_API_KEY=
+```
+
+Empty values are valid. OpenAlex remains available anonymously. A missing
+Semantic Scholar key causes its credentialed preflight check to be skipped; it
+does not disable the five default publication sources. Never commit real key
+values to `.mcp.json`, TOML, or documentation snippets.
+
+Default publication search uses CrossRef, PubMed, arXiv, OpenAlex, and Europe
+PMC. Semantic Scholar is explicit search/enrichment. ClinicalTrials.gov is
+selected with `entity_type="trial"` and remains separate from publications.
 
 ## Verification
 
@@ -85,3 +100,7 @@ claude mcp get nature-academic-search
 
 Start a new Codex task or Claude Code session after installing or updating a
 plugin so the client reloads skills and MCP tools.
+
+The preflight report lists queried, skipped, successful, and failed endpoint
+checks without printing credential values. This project has not connected
+Google Scholar, Web of Science, Scopus, Embase, CNKI, or Wanfang.
