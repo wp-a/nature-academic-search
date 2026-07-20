@@ -1,7 +1,7 @@
 {
   "name": "nature-academic-search",
   "version": "0.1.2",
-  "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
+  "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov.",
   "author": {
     "name": "wp-a",
     "url": "https://github.com/wp-a"
@@ -9,20 +9,20 @@
   "homepage": "https://github.com/wp-a/nature-academic-search",
   "repository": "https://github.com/wp-a/nature-academic-search",
   "license": "MIT",
-  "keywords": ["academic-search", "arxiv", "citations", "crossref", "pubmed"],
+  "keywords": ["academic-search", "arxiv", "citations", "crossref", "openalex", "pubmed"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Academic Paper Search",
     "shortDescription": "Verified multi-source academic paper search",
-    "longDescription": "Academic Paper Search across PubMed, CrossRef, and arXiv; resolve identifiers, deduplicate records, build MeSH strategies, and export citations.",
+    "longDescription": "Search publications across CrossRef, PubMed, arXiv, OpenAlex, and Europe PMC; use Semantic Scholar explicitly, keep ClinicalTrials.gov registrations separate, verify identifiers, and export citations.",
     "developerName": "wp-a",
     "category": "Research",
     "capabilities": ["Search", "Citations"],
     "websiteURL": "https://github.com/wp-a/nature-academic-search",
     "defaultPrompt": [
-      "Find and verify papers across PubMed, CrossRef, and arXiv.",
-      "Build a PubMed MeSH search strategy for my topic.",
-      "Verify these references and export the valid records."
+      "用默认五个论文源检索并核验这个研究主题，披露每个来源的状态。",
+      "构建这个主题的 PubMed MeSH 检索策略。",
+      "查找 ClinicalTrials.gov 试验注册，并与论文结果分开报告。"
     ]
   },
   "mcpServers": "./.mcp.json"

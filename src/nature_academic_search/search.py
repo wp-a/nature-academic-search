@@ -13,6 +13,7 @@ from .sources.registry import (
     TRIAL_SOURCES,
     build_adapters,
     source_capabilities,
+    source_type_filter_dialect,
 )
 
 IDENTIFIER_FIELDS = (
@@ -133,13 +134,21 @@ async def search_all(
     )
     results = enrichment["results"]
     errors.extend(enrichment["errors"])
+    queried = list(
+        dict.fromkeys([*selected_sources, *enrichment["sources_queried"]])
+    )
+    succeeded = list(
+        dict.fromkeys([*succeeded, *enrichment["sources_succeeded"]])
+    )
     return {
         "total": total,
         "entity_type": entity_type,
-        "sources_queried": selected_sources,
+        "sources_queried": queried,
         "sources_succeeded": succeeded,
         "sources_skipped": enrichment["skipped"],
         "enrichment_sources": selected_enrichers,
+        "enrichment_sources_queried": enrichment["sources_queried"],
+        "enrichment_sources_succeeded": enrichment["sources_succeeded"],
         "source_meta": source_meta,
         "raw_result_count": len(raw_records),
         "result_count": len(results),
@@ -158,11 +167,19 @@ async def enrich_records(
     """Enrich a bounded set of records using strong identifiers only."""
     results = [_prepare_record(record) for record in records]
     if not enrichers:
-        return {"results": results, "errors": [], "skipped": []}
+        return {
+            "results": results,
+            "errors": [],
+            "skipped": [],
+            "sources_queried": [],
+            "sources_succeeded": [],
+        }
 
     selected_adapters = dict(adapters or build_adapters(list(enrichers)))
     errors: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    queried: list[str] = []
+    succeeded: list[str] = []
     upper_bound = len(results) if limit is None else min(max(limit, 0), len(results))
 
     for source in enrichers:
@@ -180,6 +197,8 @@ async def enrich_records(
                     }
                 )
                 continue
+            if source not in queried:
+                queried.append(source)
             try:
                 incoming = await asyncio.to_thread(adapter.get_by_id, identifier)
             except Exception as exc:
@@ -187,9 +206,17 @@ async def enrich_records(
                 error["record_index"] = index
                 errors.append(error)
                 continue
+            if source not in succeeded:
+                succeeded.append(source)
             _merge_record(record, _prepare_record(incoming))
 
-    return {"results": results, "errors": errors, "skipped": skipped}
+    return {
+        "results": results,
+        "errors": errors,
+        "skipped": skipped,
+        "sources_queried": queried,
+        "sources_succeeded": succeeded,
+    }
 
 
 def _search_one(
@@ -199,7 +226,11 @@ def _search_one(
     rows: int,
     filter_type: str | None,
 ) -> dict[str, Any]:
-    if filter_type and "type_filter" in source_capabilities(source):
+    if (
+        filter_type
+        and "type_filter" in source_capabilities(source)
+        and source_type_filter_dialect(source) == "crossref"
+    ):
         return adapter.search(query, rows=rows, filter_type=filter_type)
     return adapter.search(query, rows=rows)
 
@@ -221,6 +252,12 @@ def _prepare_record(raw_record: Mapping[str, Any]) -> dict[str, Any]:
         record["semantic_scholar_id"] = str(record["semantic_scholar_id"]).strip()
     if record.get("nct_id"):
         record["nct_id"] = str(record["nct_id"]).strip().upper()
+
+    source_id, source_url = _legacy_source_locator(record)
+    if source_id and not record.get("source_id"):
+        record["source_id"] = source_id
+    if source_url and not record.get("source_url"):
+        record["source_url"] = source_url
 
     sources = list(record.get("sources") or [])
     if record.get("source") and record["source"] not in sources:
@@ -341,6 +378,20 @@ def _source_records(record: Mapping[str, Any]) -> list[dict[str, Any]]:
         if current not in records:
             records.append(current)
     return records
+
+
+def _legacy_source_locator(record: Mapping[str, Any]) -> tuple[str, str]:
+    source = record.get("source")
+    if source == "crossref" and record.get("doi"):
+        identifier = str(record["doi"])
+        return identifier, f"https://doi.org/{identifier}"
+    if source == "pubmed" and record.get("pmid"):
+        identifier = str(record["pmid"])
+        return identifier, f"https://pubmed.ncbi.nlm.nih.gov/{identifier}/"
+    if source == "arxiv" and record.get("arxiv_id"):
+        identifier = str(record["arxiv_id"])
+        return identifier, f"https://arxiv.org/abs/{identifier}"
+    return "", ""
 
 
 def _source_error(source: str, error: BaseException) -> dict[str, Any]:

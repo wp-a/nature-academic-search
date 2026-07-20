@@ -149,6 +149,29 @@ def test_search_all_uses_five_default_publication_sources() -> None:
     assert all(adapter.calls for adapter in adapters.values())
 
 
+def test_crossref_work_type_is_not_broadcast_to_other_filter_dialects() -> None:
+    source_names = ["crossref", "openalex", "europe_pmc"]
+    adapters = {
+        source: FakeSource({"total": 0, "results": []}) for source in source_names
+    }
+
+    asyncio.run(
+        search_all(
+            "prime editing",
+            source_names,
+            rows=5,
+            filter_type="journal-article",
+            adapters=adapters,
+        )
+    )
+
+    assert adapters["crossref"].calls[0][2] == {
+        "filter_type": "journal-article"
+    }
+    assert adapters["openalex"].calls[0][2] == {}
+    assert adapters["europe_pmc"].calls[0][2] == {}
+
+
 def test_pubmed_and_europe_pmc_merge_by_pmid_and_preserve_provenance() -> None:
     records = [
         {
@@ -269,6 +292,52 @@ def test_publication_and_trial_titles_never_merge() -> None:
     assert len(merged) == 2
 
 
+def test_legacy_source_records_receive_canonical_id_and_url_provenance() -> None:
+    records = [
+        {
+            "title": "CrossRef record",
+            "doi": "https://doi.org/10.1000/example",
+            "source": "crossref",
+        },
+        {
+            "title": "PubMed record",
+            "pmid": "12345678",
+            "source": "pubmed",
+        },
+        {
+            "title": "arXiv record",
+            "arxiv_id": "2401.12345v2",
+            "source": "arxiv",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert [record["source_records"] for record in merged] == [
+        [
+            {
+                "source": "crossref",
+                "source_id": "10.1000/example",
+                "source_url": "https://doi.org/10.1000/example",
+            }
+        ],
+        [
+            {
+                "source": "pubmed",
+                "source_id": "12345678",
+                "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
+            }
+        ],
+        [
+            {
+                "source": "arxiv",
+                "source_id": "2401.12345",
+                "source_url": "https://arxiv.org/abs/2401.12345",
+            }
+        ],
+    ]
+
+
 class FakeEnricher:
     def __init__(self, responses: dict[str, dict | Exception]):
         self.responses = responses
@@ -329,6 +398,8 @@ def test_semantic_scholar_enrichment_uses_strong_ids_and_preserves_failures() ->
     }
     assert outcome["results"][1]["title"] == "By arXiv"
     assert outcome["errors"][0]["source"] == "semantic_scholar"
+    assert outcome["sources_queried"] == ["semantic_scholar"]
+    assert outcome["sources_succeeded"] == ["semantic_scholar"]
     assert outcome["skipped"] == [
         {
             "source": "semantic_scholar",
@@ -366,6 +437,49 @@ def test_enrichment_is_bounded_to_requested_limit() -> None:
 
     assert len(outcome["results"]) == 2
     assert enricher.calls == ["DOI:10.1000/one"]
+
+
+def test_search_all_includes_attempted_enrichment_in_source_status() -> None:
+    source = FakeSource(
+        {
+            "total": 1,
+            "results": [
+                {
+                    "title": "By DOI",
+                    "doi": "10.1000/example",
+                    "source": "crossref",
+                }
+            ],
+        }
+    )
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/example": {
+                "title": "By DOI",
+                "doi": "10.1000/example",
+                "source": "semantic_scholar",
+                "semantic_scholar_id": "s2-doi",
+            }
+        }
+    )
+
+    result = asyncio.run(
+        search_all(
+            "prime editing",
+            ["crossref"],
+            rows=5,
+            adapters={
+                "crossref": source,
+                "semantic_scholar": enricher,
+            },
+            enrichers=["semantic_scholar"],
+        )
+    )
+
+    assert result["sources_queried"] == ["crossref", "semantic_scholar"]
+    assert result["sources_succeeded"] == ["crossref", "semantic_scholar"]
+    assert result["enrichment_sources_queried"] == ["semantic_scholar"]
+    assert result["enrichment_sources_succeeded"] == ["semantic_scholar"]
 
 
 def test_trial_search_defaults_to_clinicaltrials_source() -> None:

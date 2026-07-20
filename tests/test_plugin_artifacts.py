@@ -209,6 +209,22 @@ def test_display_brand_changes_without_renaming_skill_or_plugins() -> None:
     assert DISPLAY_BRAND in claude_marketplace["plugins"][0]["description"]
 
 
+def test_plugin_manifests_describe_expanded_source_roles() -> None:
+    codex_manifest = load_json(PLUGIN / ".codex-plugin" / "plugin.json")
+    claude_manifest = load_json(PLUGIN / ".claude-plugin" / "plugin.json")
+    claude_marketplace = load_json(ROOT / ".claude-plugin" / "marketplace.json")
+
+    for content in (
+        codex_manifest["description"],
+        codex_manifest["interface"]["longDescription"],
+        claude_manifest["description"],
+        claude_marketplace["plugins"][0]["description"],
+    ):
+        assert "OpenAlex" in content
+        assert "Europe PMC" in content
+        assert "ClinicalTrials.gov" in content
+
+
 def test_marketplaces_point_to_the_packaged_plugin() -> None:
     codex_marketplace = load_json(ROOT / ".agents" / "plugins" / "marketplace.json")
     claude_marketplace = load_json(ROOT / ".claude-plugin" / "marketplace.json")

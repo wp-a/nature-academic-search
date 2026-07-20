@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "nature-academic-search",
-      "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
+      "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov.",
       "source": "./plugins/nature-academic-search",
       "strict": true
     }

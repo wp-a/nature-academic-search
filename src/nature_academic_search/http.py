@@ -44,16 +44,16 @@ def request_json(
                 headers=dict(headers or {}),
                 timeout=timeout,
             )
-        except requests.Timeout as exc:
+        except requests.Timeout:
             if attempt < max_retries:
                 time.sleep(_backoff_seconds(attempt, {}))
                 continue
-            raise DataSourceError(source, f"Request timed out: {safe_url}") from exc
-        except requests.RequestException as exc:
+            raise DataSourceError(source, f"Request timed out: {safe_url}") from None
+        except requests.RequestException:
             if attempt < max_retries:
                 time.sleep(_backoff_seconds(attempt, {}))
                 continue
-            raise DataSourceError(source, f"Request failed: {safe_url}") from exc
+            raise DataSourceError(source, f"Request failed: {safe_url}") from None
 
         if response.status_code in RETRYABLE_STATUSES and attempt < max_retries:
             time.sleep(_backoff_seconds(attempt, response.headers))
@@ -66,8 +66,8 @@ def request_json(
 
         try:
             payload = response.json()
-        except ValueError as exc:
-            raise DataSourceError(source, f"invalid JSON from {safe_url}") from exc
+        except ValueError:
+            raise DataSourceError(source, f"invalid JSON from {safe_url}") from None
         return payload, _response_metadata(response.headers)
 
     raise AssertionError("request retry loop exited unexpectedly")

@@ -165,3 +165,24 @@ def test_clinicaltrials_version_extraction_is_optional() -> None:
 
     assert _extract_clinicaltrials_version(body, {}) == "2026-07-20T00:00:00Z"
     assert _extract_clinicaltrials_version(b"{}", {}) is None
+
+
+def test_citation_preflight_uses_the_unified_skip_aware_reporter() -> None:
+    from nature_academic_search import citation, preflight
+
+    results = {
+        "semantic_scholar": {
+            "ok": True,
+            "skipped": True,
+            "time": 0.0,
+            "error": None,
+        }
+    }
+    with (
+        patch.object(preflight, "check_endpoints", return_value=results),
+        patch.object(preflight, "print_report", return_value=True) as print_report,
+    ):
+        status = citation.main(["--preflight"])
+
+    assert status == 0
+    print_report.assert_called_once_with(results)

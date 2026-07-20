@@ -28,12 +28,23 @@ SOURCE_CAPABILITIES = {
     "clinicaltrials_gov": frozenset({"search", "lookup"}),
 }
 
+SOURCE_TYPE_FILTER_DIALECTS = {
+    "crossref": "crossref",
+    "openalex": "openalex",
+    "europe_pmc": "europe_pmc",
+}
+
 
 def source_capabilities(source: str) -> frozenset[str]:
     try:
         return SOURCE_CAPABILITIES[source]
     except KeyError as exc:
         raise ValueError(f"Unknown academic source: {source}") from exc
+
+
+def source_type_filter_dialect(source: str) -> str | None:
+    """Return the source-native publication type vocabulary, if supported."""
+    return SOURCE_TYPE_FILTER_DIALECTS.get(source)
 
 
 def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:

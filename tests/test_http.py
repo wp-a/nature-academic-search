@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import patch
@@ -207,6 +208,14 @@ def test_request_json_converts_timeout_without_leaking_secrets() -> None:
 
     assert "super-secret" not in str(error.value)
     assert "timed out" in str(error.value).lower()
+    formatted = "".join(
+        traceback.format_exception(
+            type(error.value),
+            error.value,
+            error.value.__traceback__,
+        )
+    )
+    assert "super-secret" not in formatted
 
 
 def test_request_json_rejects_malformed_json() -> None:
