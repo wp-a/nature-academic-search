@@ -2,6 +2,7 @@
 
 from .arxiv import ArxivSource
 from .crossref import CrossRefSource
+from .openalex import OpenAlexSource
 from .pubmed import PubMedSource
 
-__all__ = ["CrossRefSource", "PubMedSource", "ArxivSource"]
+__all__ = ["ArxivSource", "CrossRefSource", "OpenAlexSource", "PubMedSource"]
