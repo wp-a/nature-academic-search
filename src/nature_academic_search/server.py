@@ -2,7 +2,7 @@
 
 Unified entry point exposing four tools:
   - search_papers: multi-source concurrent search
-  - get_paper_by_id: fetch details by DOI / PMID / arXiv ID
+  - get_paper_by_id: fetch details by supported scholarly identifiers
   - get_citation: formatted citation via CrossRef content negotiation
   - lookup_mesh: MeSH descriptor lookup
 """
@@ -18,15 +18,26 @@ from mcp.server.fastmcp import FastMCP
 from .errors import DataSourceError
 from .logging import setup_logging
 from .search import search_all
-from .sources import ArxivSource, CrossRefSource, PubMedSource
+from .sources.registry import (
+    DEFAULT_PUBLICATION_SOURCES,
+    SOURCE_ENTITY_TYPES,
+    TRIAL_SOURCES,
+    build_adapters,
+    source_capabilities,
+)
 
 mcp = FastMCP("academic-search")
 logger = setup_logging()
 
 # Singleton source instances (shared across tool calls)
-_crossref = CrossRefSource()
-_pubmed = PubMedSource()
-_arxiv = ArxivSource()
+_ADAPTERS = build_adapters(tuple(SOURCE_ENTITY_TYPES))
+_crossref = _ADAPTERS["crossref"]
+_pubmed = _ADAPTERS["pubmed"]
+_arxiv = _ADAPTERS["arxiv"]
+_openalex = _ADAPTERS["openalex"]
+_europe_pmc = _ADAPTERS["europe_pmc"]
+_semantic_scholar = _ADAPTERS["semantic_scholar"]
+_clinicaltrials = _ADAPTERS["clinicaltrials_gov"]
 
 
 # ---------------------------------------------------------------------------
@@ -36,10 +47,23 @@ _arxiv = ArxivSource()
 def detect_id_type(id: str) -> str:
     """Auto-detect identifier type.
 
-    Returns one of: "doi", "pmid", "arxiv".
+    Raw Semantic Scholar paper IDs remain explicit-only because their format is
+    not sufficiently distinctive for safe auto-detection.
     Raises ValueError when detection fails.
     """
     id = id.strip()
+    if re.match(
+        r"^https?://(?:www\.|api\.)?semanticscholar\.org/",
+        id,
+        flags=re.IGNORECASE,
+    ):
+        return "semantic_scholar"
+    if re.search(r"(?:^|/)NCT\d{8}(?:/?$|[?#])", id, flags=re.IGNORECASE):
+        return "nct"
+    if re.search(r"(?:^|/)PMC\d+(?:/?$|[?#])", id, flags=re.IGNORECASE):
+        return "pmcid"
+    if re.search(r"(?:^|/)W\d+(?:/?$|[?#])", id, flags=re.IGNORECASE):
+        return "openalex"
     id = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", id, flags=re.IGNORECASE)
     if id.lower().startswith("doi:"):
         id = id[4:].strip()
@@ -65,7 +89,15 @@ def _resolve_id_type(id: str, id_type: str) -> str:
     if id_type == "auto":
         return detect_id_type(id)
     normalised = id_type.lower().strip()
-    if normalised in ("doi", "pmid", "arxiv"):
+    if normalised in (
+        "doi",
+        "pmid",
+        "pmcid",
+        "arxiv",
+        "openalex",
+        "semantic_scholar",
+        "nct",
+    ):
         return normalised
     raise ValueError(f"Unsupported id_type: {id_type}")
 
@@ -93,14 +125,18 @@ def search_papers(
     sources: list[str] | None = None,
     rows: int = 5,
     type: str | None = None,
+    entity_type: str = "publication",
+    enrich: list[str] | None = None,
 ) -> str:
-    """Search academic papers across multiple sources (CrossRef, PubMed, arXiv).
+    """Search publications or trial registrations across supported sources.
 
     Args:
         query: Search keywords or query string.
-        sources: List of source names to query. Defaults to all three.
+        sources: Source names to query. Uses entity-specific defaults when omitted.
         rows: Number of results per source (max 50).
         type: Optional CrossRef work type filter (e.g. "journal-article").
+        entity_type: "publication" (default) or "trial".
+        enrich: Optional publication enrichers, currently "semantic_scholar".
 
     Returns:
         JSON string with total count, merged results, and any per-source errors.
@@ -108,22 +144,46 @@ def search_papers(
     if not query or not query.strip():
         return _json_error("Empty search query")
 
-    if sources is None:
-        sources = ["crossref", "pubmed", "arxiv"]
+    if entity_type not in {"publication", "trial"}:
+        return _json_error(f"Invalid entity_type: {entity_type}")
 
-    # Validate source names
-    valid_sources = {"crossref", "pubmed", "arxiv"}
-    invalid = [s for s in sources if s not in valid_sources]
+    enrich = list(enrich or [])
+    valid_sources = {
+        source
+        for source, source_entity_type in SOURCE_ENTITY_TYPES.items()
+        if source_entity_type == entity_type
+    }
+    invalid = [source for source in (sources or []) if source not in valid_sources]
     if invalid:
         return _json_error(f"Invalid sources: {invalid}. Valid: {sorted(valid_sources)}")
+    invalid_enrichers = [
+        source
+        for source in enrich
+        if source not in SOURCE_ENTITY_TYPES
+        or "enrich" not in source_capabilities(source)
+    ]
+    if invalid_enrichers:
+        return _json_error(
+            f"Invalid enrichers: {invalid_enrichers}. Valid: ['semantic_scholar']"
+        )
+    if entity_type != "publication" and enrich:
+        return _json_error("Trial records do not support publication enrichment")
 
     rows = max(1, min(rows, 50))
+
+    default_sources = (
+        DEFAULT_PUBLICATION_SOURCES if entity_type == "publication" else TRIAL_SOURCES
+    )
+    adapter_names = list(dict.fromkeys([*(sources or default_sources), *enrich]))
+    adapters = {source: _ADAPTERS[source] for source in adapter_names}
 
     logger.info("search_papers called", extra={
         "tool": "search_papers",
         "query": query,
         "sources": sources,
         "rows": rows,
+        "entity_type": entity_type,
+        "enrich": enrich,
     })
 
     try:
@@ -135,11 +195,9 @@ def search_papers(
                 sources,
                 rows,
                 filter_type=type,
-                adapters={
-                    "crossref": _crossref,
-                    "pubmed": _pubmed,
-                    "arxiv": _arxiv,
-                },
+                adapters=adapters,
+                enrichers=enrich,
+                entity_type=entity_type,
             )
         )
     except Exception as exc:
@@ -151,14 +209,15 @@ def search_papers(
 
 @mcp.tool()
 def get_paper_by_id(id: str, id_type: str = "auto") -> str:
-    """Get paper details by identifier (DOI, PMID, or arXiv ID).
+    """Get publication or trial details by a supported identifier.
 
     Args:
         id: Paper identifier. Auto-detected if id_type is "auto":
             - Starts with "10." -> DOI (CrossRef)
             - 7-8 digit number -> PMID (PubMed)
             - YYMM.NNNNN format -> arXiv ID (arXiv)
-        id_type: Force identifier type ("doi", "pmid", "arxiv", or "auto").
+            - PMC..., W..., NCT..., and supported source URLs
+        id_type: Force a supported identifier type, or use "auto".
 
     Returns:
         JSON string with detailed paper metadata.
@@ -178,14 +237,7 @@ def get_paper_by_id(id: str, id_type: str = "auto") -> str:
     })
 
     try:
-        if resolved_type == "doi":
-            result = _crossref.get_by_doi(id.strip())
-        elif resolved_type == "pmid":
-            result = _pubmed.get_by_pmid(id.strip())
-        elif resolved_type == "arxiv":
-            result = _arxiv.get_by_id(id.strip())
-        else:
-            return _json_error(f"Unsupported ID type: {resolved_type}")
+        result = _lookup_record(id.strip(), resolved_type)
     except DataSourceError as exc:
         logger.error("get_paper_by_id failed: %s", exc)
         return _json_error(str(exc), source=exc.source)
@@ -204,8 +256,8 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     For PMID/arXiv IDs, fetches metadata first then generates a basic citation.
 
     Args:
-        id: Paper identifier (DOI, PMID, or arXiv ID).
-        id_type: Force identifier type ("doi", "pmid", "arxiv", or "auto").
+        id: Supported paper identifier.
+        id_type: Force a supported identifier type, or use "auto".
         style: Citation style. Supported: apa, nature, ieee, harvard,
                vancouver, chicago, mla.
 
@@ -228,20 +280,30 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     })
 
     try:
+        if resolved_type == "nct":
+            return _json_error(
+                "Trial registrations are not paper citations",
+                source="clinicaltrials_gov",
+            )
         if resolved_type == "doi":
             citation = _crossref.get_citation(id.strip(), style=style)
             return _json_ok({"id": id, "style": style, "citation": citation})
 
-        # For non-DOI IDs, fetch metadata and build a basic citation
-        if resolved_type == "pmid":
-            paper = _pubmed.get_by_pmid(id.strip())
-        elif resolved_type == "arxiv":
-            paper = _arxiv.get_by_id(id.strip())
-        else:
-            return _json_error(f"Unsupported ID type: {resolved_type}")
+        paper = _lookup_record(id.strip(), resolved_type)
+        doi = str(paper.get("doi") or "").strip()
+        if doi:
+            citation = _crossref.get_citation(doi, style=style)
+            return _json_ok({"id": id, "style": style, "citation": citation})
 
         citation = _format_basic_citation(paper, style)
-        return _json_ok({"id": id, "style": style, "citation": citation})
+        return _json_ok(
+            {
+                "id": id,
+                "style": style,
+                "citation": citation,
+                "metadata_source": paper.get("source"),
+            }
+        )
 
     except DataSourceError as exc:
         logger.error("get_citation failed: %s", exc)
@@ -249,6 +311,25 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     except Exception as exc:
         logger.exception("get_citation failed unexpectedly")
         return _json_error(f"Unexpected error: {exc}")
+
+
+def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
+    """Route a normalized identifier type to its owning source adapter."""
+    if id_type == "doi":
+        return _crossref.get_by_doi(identifier)
+    if id_type == "pmid":
+        return _pubmed.get_by_pmid(identifier)
+    if id_type == "pmcid":
+        return _europe_pmc.get_by_pmcid(identifier)
+    if id_type == "arxiv":
+        return _arxiv.get_by_id(identifier)
+    if id_type == "openalex":
+        return _openalex.get_by_id(identifier)
+    if id_type == "semantic_scholar":
+        return _semantic_scholar.get_by_id(identifier)
+    if id_type == "nct":
+        return _clinicaltrials.get_by_id(identifier)
+    raise ValueError(f"Unsupported ID type: {id_type}")
 
 
 def _format_basic_citation(paper: dict, style: str) -> str:
