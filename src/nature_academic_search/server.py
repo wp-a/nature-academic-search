@@ -280,16 +280,17 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     })
 
     try:
+        lookup_id = _normalize_identifier(id, resolved_type)
         if resolved_type == "nct":
             return _json_error(
                 "Trial registrations are not paper citations",
                 source="clinicaltrials_gov",
             )
         if resolved_type == "doi":
-            citation = _crossref.get_citation(id.strip(), style=style)
+            citation = _crossref.get_citation(lookup_id, style=style)
             return _json_ok({"id": id, "style": style, "citation": citation})
 
-        paper = _lookup_record(id.strip(), resolved_type)
+        paper = _lookup_record(lookup_id, resolved_type)
         doi = str(paper.get("doi") or "").strip()
         if doi:
             citation = _crossref.get_citation(doi, style=style)
@@ -315,6 +316,7 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
 
 def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
     """Route a normalized identifier type to its owning source adapter."""
+    identifier = _normalize_identifier(identifier, id_type)
     if id_type == "doi":
         return _crossref.get_by_doi(identifier)
     if id_type == "pmid":
@@ -330,6 +332,22 @@ def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
     if id_type == "nct":
         return _clinicaltrials.get_by_id(identifier)
     raise ValueError(f"Unsupported ID type: {id_type}")
+
+
+def _normalize_identifier(identifier: str, id_type: str) -> str:
+    """Remove accepted DOI/PMID wrappers before strict source lookups."""
+    value = identifier.strip()
+    if id_type == "doi":
+        value = re.sub(
+            r"^https?://(?:dx\.)?doi\.org/",
+            "",
+            value,
+            flags=re.IGNORECASE,
+        )
+        return re.sub(r"^doi:\s*", "", value, flags=re.IGNORECASE)
+    if id_type == "pmid":
+        return re.sub(r"^pmid:\s*", "", value, flags=re.IGNORECASE)
+    return value
 
 
 def _format_basic_citation(paper: dict, style: str) -> str:

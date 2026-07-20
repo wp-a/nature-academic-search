@@ -246,6 +246,51 @@ def test_get_paper_by_id_routes_expanded_identifiers(
     lookup.assert_called_once_with(identifier)
 
 
+@pytest.mark.parametrize(
+    ("identifier", "source_attribute", "method", "normalized"),
+    [
+        (
+            "https://doi.org/10.1000/example",
+            "_crossref",
+            "get_by_doi",
+            "10.1000/example",
+        ),
+        ("PMID:12345678", "_pubmed", "get_by_pmid", "12345678"),
+    ],
+)
+def test_get_paper_by_id_normalizes_legacy_identifier_wrappers_before_lookup(
+    identifier: str,
+    source_attribute: str,
+    method: str,
+    normalized: str,
+) -> None:
+    server = load_server()
+    source = getattr(server, source_attribute)
+    expected = {"title": "Resolved"}
+
+    with patch.object(source, method, return_value=expected) as lookup:
+        result = json.loads(server.get_paper_by_id(identifier))
+
+    assert result == expected
+    lookup.assert_called_once_with(normalized)
+
+
+def test_get_citation_normalizes_doi_url_before_crossref_request() -> None:
+    server = load_server()
+
+    with patch.object(
+        server._crossref,
+        "get_citation",
+        return_value="Formatted citation",
+    ) as get_citation:
+        result = json.loads(
+            server.get_citation("https://doi.org/10.1000/example", style="nature")
+        )
+
+    assert result["citation"] == "Formatted citation"
+    get_citation.assert_called_once_with("10.1000/example", style="nature")
+
+
 def test_get_citation_prefers_crossref_when_resolved_record_has_doi() -> None:
     server = load_server()
     paper = {"title": "Resolved", "doi": "10.1000/example"}
