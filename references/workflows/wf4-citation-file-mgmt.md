@@ -1,44 +1,27 @@
-# Workflow 4: Citation File Management
+# Workflow 4：引用文件管理
 
-**Purpose:** Download and convert citation files.
+**目的：** 下载或转换 PubMed、CrossRef 与 arXiv 引用元数据。
 
-**Uses:** `scripts/format-converter.py` — multi-source downloader (PubMed/CrossRef/arXiv) with .nbib/.ris/.bib output.
+## 示例
 
-## Procedure
-
-1. **Identify papers** — by PMID, DOI, arXiv ID, or search query.
-2. **Download** via format-converter:
-   ```bash
-   # PubMed
-   python scripts/format-converter.py --pmid 28344011 --format nbib
-
-   # CrossRef
-   python scripts/format-converter.py --doi 10.1038/nature14539 --format ris
-
-   # arXiv
-   python scripts/format-converter.py --arxiv 1706.03762 --format bib
-
-   # Batch from file
-   python scripts/format-converter.py --input refs.txt --format ris
-   ```
-3. **Convert format** as needed: `.nbib` (MEDLINE), `.ris` (EndNote/Zotero), `.bib` (BibTeX/LaTeX).
-   Format specifications: [RIS and BibTeX Format](../ris-bibtex-format.md).
-4. Save to `./references/` directory.
-5. Verify output count matches input.
-
-## refs.txt Format
-
+```bash
+nature-academic-search citation --pmid 28344011 --format nbib
+nature-academic-search citation --doi 10.1038/nature14539 --format ris
+nature-academic-search citation --arxiv 1706.03762 --format bib
+nature-academic-search citation --input refs.txt --format ris --output references/
 ```
+
+支持 `.nbib`、`.ris`、`.bib`、`.enw`。格式说明见
+[RIS and BibTeX Format](../ris-bibtex-format.md)。
+
+## 批量输入
+
+```text
 PMID:28344011
 DOI:10.1038/nature14539
 ARXIV:1706.03762
 QUERY:TB-Profiler AND Bioinformatics[Journal]
 AUTHOR:Dheda TITLE:drug-resistant tuberculosis
-# Lines starting with # are comments
 ```
 
-## Error Modes
-
-- **Script failure (2x):** fall back to manual .ris/.bib generation from MCP-fetched metadata.
-- **DOI not found in CrossRef:** suggest verifying DOI spelling, trying PMID instead.
-- **arXiv ID not found:** check for version suffix (v1, v2), try without it.
+转换前先核验标识符并去重；转换后检查成功数、失败项与输出格式。来源失败时不得用模型补写缺失元数据。

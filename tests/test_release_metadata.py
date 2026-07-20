@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_VERSION = "0.1.2"
+RELEASE_VERSION = "0.2.0"
 DISPLAY_BRAND = "Academic Paper Search"
 TECHNICAL_ID = "nature-academic-search"
 
@@ -85,6 +85,30 @@ def test_readme_presents_the_chinese_research_workflow() -> None:
         "如果这个项目",
     ):
         assert required in readme
+
+
+def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
+    readme = read("README.md")
+
+    for source in (
+        "CrossRef",
+        "PubMed",
+        "arXiv",
+        "OpenAlex",
+        "Europe PMC",
+        "Semantic Scholar",
+        "ClinicalTrials.gov",
+    ):
+        assert source in readme
+    for contract in (
+        'entity_type="trial"',
+        "sources_queried",
+        "sources_succeeded",
+        "sources_skipped",
+        "citation_counts",
+        "试验注册",
+    ):
+        assert contract in readme
 
 
 def test_ci_covers_supported_python_and_legacy_contract() -> None:

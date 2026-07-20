@@ -6,11 +6,12 @@
 
 安装标识仍为 `nature-academic-search`，现有命令与配置无需迁移。
 
-不止返回几个论文标题：同时检索 PubMed、CrossRef 和 arXiv，合并重复记录，核验 DOI / PMID / arXiv ID，区分正式论文与预印本，并把来源失败如实写进结果。
+默认并行检索 CrossRef、PubMed、arXiv、OpenAlex 和 Europe PMC；需要时显式调用 Semantic Scholar
+搜索或富化，并把 ClinicalTrials.gov 试验注册与论文严格分开。
 
 [![CI](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml/badge.svg)](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![Python](https://img.shields.io/pypi/pyversions/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![License](https://img.shields.io/github/license/wp-a/nature-academic-search.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/wp-a/nature-academic-search?style=social)](https://github.com/wp-a/nature-academic-search/stargazers)
 
-[快速开始](#30-秒开始) · [工作流](#它如何工作) · [使用场景](#直接这样问) · [能力边界](#能力边界)
+[快速开始](#30-秒开始) · [直接这样问](#直接这样问) · [数据源](#数据源如何分工) · [能力边界](#能力边界)
 
 </div>
 
@@ -18,26 +19,32 @@
 
 安装后，在 Codex 或 Claude Code 中输入：
 
-> 使用 `$nature-academic-search` 查找 2022 年以来 GLP-1 受体激动剂与抑郁风险的文献。
-> 同时检索 PubMed、CrossRef 和 arXiv，去重后核验 DOI / PMID，区分正式论文和预印本，
-> 最后导出 RIS。某个来源失败时继续，并明确说明缺口。
+> 使用 `$nature-academic-search` 查找 2022 年以来 GLP-1 受体激动剂与抑郁风险的论文。
+> 使用默认五个论文源，去重后核验 DOI / PMID / PMCID，区分正式论文和预印本；
+> 对有强标识符的记录用 Semantic Scholar 补充引用指标，最后导出 RIS。某个来源失败时继续并说明。
 
-你得到的不是无法追溯的论文清单，而是一份带查询、来源、核验状态和失败记录的结果。以下是结构示意，
-不代表一次真实检索的统计数据：
+查询试验注册时明确指定实体类型：
+
+> 使用 `$nature-academic-search` 调用 `search_papers`，以 `entity_type="trial"` 查找正在招募的
+> 肺癌新辅助免疫治疗试验；按 NCT ID 去重，不要把试验注册当成已发表论文。
+
+返回结果会证明哪些来源实际执行，而不是只展示一张无法追溯的标题清单：
 
 ```yaml
 query: "GLP-1 receptor agonists AND depression risk"
-searched_sources: [pubmed, crossref, arxiv]
-search_date: YYYY-MM-DD
+entity_type: publication
+sources_queried: [crossref, pubmed, arxiv, openalex, europe_pmc]
+sources_succeeded: [crossref, pubmed, arxiv, openalex, europe_pmc]
+sources_skipped: []
+errors: null
 raw_result_count: <去重前数量>
 result_count: <唯一记录数量>
-groups:
-  peer_reviewed: <正式论文>
-  preprints: <预印本>
-  unresolved: <待人工核验>
-verification: [verified, mismatch, not_found, manual_needed]
-source_errors: []
-export: references/results.ris
+results:
+  - title: <题名>
+    sources: [pubmed, europe_pmc]
+    source_records: [<来源记录>]
+    citation_counts: {openalex: <来源计数>, semantic_scholar: <来源计数>}
+    citation_count_source: openalex
 ```
 
 ## 30 秒开始
@@ -56,17 +63,11 @@ claude plugin marketplace add wp-a/nature-academic-search
 claude plugin install nature-academic-search@wp-a-academic-tools
 ```
 
-启动客户端前设置 PubMed 联系邮箱；NCBI API Key 可选：
-
-```bash
-export PUBMED_EMAIL=researcher@example.com
-export NCBI_API_KEY=optional-key
-```
-
 ### CLI 与自动安装器
 
 ```bash
 uv tool install nature-academic-search
+export PUBMED_EMAIL=researcher@example.com
 nature-academic-search install --client both --email researcher@example.com
 nature-academic-search preflight
 ```
@@ -77,52 +78,61 @@ nature-academic-search preflight
 bash install.sh researcher@example.com
 ```
 
-完整参数、`--dry-run` 和安装验证见[安装说明](docs/installation.md)。
+`NCBI_API_KEY`、`OPENALEX_API_KEY`、`SEMANTIC_SCHOLAR_API_KEY` 均为可选项。没有 Semantic Scholar
+key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安装文档](docs/installation.md)。
+
+## 数据源如何分工
+
+| 来源 | 调用方式 | 最适合做什么 | 边界 |
+|---|---|---|---|
+| CrossRef | 默认论文源 | DOI、出版商元数据、格式化引用 | 不是完整学科数据库 |
+| PubMed | 默认论文源 | 生物医学索引、PMID、MeSH | 不保证全文可得 |
+| arXiv | 默认论文源 | 预印本与版本线索 | 不代表同行评审状态 |
+| OpenAlex | 默认论文源 | 跨学科发现、OA 与来源化引用指标 | 指标只代表 OpenAlex 口径 |
+| Europe PMC | 默认论文源 | PMID/PMCID、生物医学与开放全文线索 | 与 PubMed 有重叠 |
+| Semantic Scholar | 显式搜索或 `enrich` | 补充元数据和引用/参考文献指标 | 富化只用强标识符 |
+| ClinicalTrials.gov | `entity_type="trial"` | NCT 注册、状态、干预、申办方和入组信息 | 试验注册不是论文 |
+
+默认 publication 搜索调用前五源。显式传入旧三源列表时仍只调用 CrossRef、PubMed、arXiv，兼容旧工作流。
 
 ## 它如何工作
 
 **检索 → 去重 → 核验 → 导出**
 
-1. **定义范围**：记录研究主题、日期、文献类型、结果数量和是否接受预印本。
-2. **按库检索**：PubMed、CrossRef、arXiv 使用各自适合的查询，不混用数据库语法。
-3. **合并去重**：优先匹配 DOI，其次 PMID / arXiv ID，再比较标准化题名与年份。
-4. **逐条核验**：对照题名、作者、来源、年份和标识符；冲突不靠猜测修复。
-5. **分类交付**：分开正式论文、预印本和待核验记录，导出 RIS、BibTeX、NBIB 或 ENW。
+1. **定义范围**：记录研究主题、日期、类型、数量、是否接受预印本以及实体类型。
+2. **按库检索**：使用各来源适合的查询，不把 PubMed 字段语法复制到其他 API。
+3. **合并去重**：优先匹配 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT ID；
+   弱题名匹配只在相同实体类型内进行。
+4. **保留溯源**：每条记录带 `sources` / `source_records`；冲突进入 `conflicts`。
+5. **逐条核验**：对照题名、作者、期刊、年份和标识符，标记 `verified`、`mismatch`、
+   `not_found` 或 `manual_needed`。
+6. **分类交付**：正式论文、预印本、trial 和未解决记录分开；论文可导出 RIS、BibTeX、NBIB 或 ENW。
 
-任一来源超时或返回错误时，其他来源的成功结果仍会保留；最终回复会列出失败来源及其可能造成的缺口。
+任一来源超时或失败时，其他成功结果仍会保留。`sources_queried`、`sources_succeeded`、
+`sources_skipped` 与 `errors` 明确展示完整状态。
 
 ## 为什么是“核验优先”
 
 | 常见检索输出 | Academic Paper Search |
 |---|---|
-| 只给标题和链接 | 同时保留查询、检索日期、标识符与来源追踪 |
-| 多库结果重复出现 | 按 DOI、PMID、arXiv ID、题名与年份合并 |
-| DOI 或作者冲突被静默覆盖 | 标记 `mismatch` 或 `manual_needed`，逐项说明 |
-| 预印本与正式版本混在一起 | 分组报告并保留版本关系 |
-| 单库故障导致整次任务失败 | 返回部分成功结果并披露 `errors` |
-| 引用格式靠模型补全 | 从已解析记录生成引用或引用文件 |
-
-这套约束适合需要把结果放进论文、开题报告或参考文献管理器的用户，也能降低 AI 生成“看起来合理、
-实际不存在”的引用风险。
-
-## 数据源能力
-
-| 来源 | 最适合做什么 | 可核验标识符 | 明确不做什么 |
-|---|---|---|---|
-| PubMed | 生物医学检索、MeSH、期刊索引 | PMID、记录中的 DOI | 不提供所有论文全文 |
-| CrossRef | 出版商元数据、DOI 解析、引用格式 | DOI | 不是完整学科数据库 |
-| arXiv | 预印本检索、版本与发表线索 | arXiv ID、记录中的 DOI | 不代表同行评审状态 |
+| 只给标题和链接 | 保留查询、日期、实体类型、标识符与来源追踪 |
+| 多库结果重复 | 强标识符优先去重，弱匹配保留冲突 |
+| 引用次数混成一个数字 | 使用 `citation_counts` 和 `citation_count_source` 标明口径 |
+| 预印本、论文和试验注册混在一起 | 按 publication/preprint/trial 分组且禁止跨实体合并 |
+| 单库故障导致整次失败 | 返回部分成功结果并披露失败或跳过原因 |
+| 引用格式靠模型补全 | 解析记录后格式化；NCT 不伪造论文引用 |
 
 ## 适合的科研任务
 
-- **选题调研**：“找近五年肿瘤免疫治疗耐药机制的论文，按正式论文和预印本分组。”
-- **MeSH 策略**：“先核验生成式 AI 与医学教育的 MeSH，再构建 PubMed 检索式。”
-- **引用核验**：“检查这些 DOI / PMID 是否对应给定题名，逐项报告冲突。”
+- **选题调研**：“找近五年肿瘤免疫治疗耐药机制论文，按正式论文和预印本分组。”
+- **MeSH 策略**：“核验生成式 AI 与医学教育的 MeSH，再构建 PubMed 检索式。”
+- **引用核验**：“检查这些 DOI / PMID / PMCID 是否对应给定题名，逐项报告冲突。”
 - **版本追踪**：“判断这些 arXiv 预印本是否已有正式发表版本。”
-- **文献导出**：“把已核验记录去重后导出为 RIS，同时单列未解决引用。”
+- **试验追踪**：“查 ClinicalTrials.gov 招募中试验，并另行核验其 linked publications。”
+- **文献导出**：“把已核验论文去重后导出 RIS，同时单列未解决引用。”
 
-它适合综述前期检索与引用整理，但不会替代正式系统综述所需的数据库订阅、双人筛选、偏倚评估或
-学科馆员复核。
+它适合综述前期检索、证据地图和引用整理，但不会替代正式系统综述所需的订阅数据库、双人筛选、
+偏倚评估或学科馆员复核。
 
 ## MCP 工具
 
@@ -130,10 +140,10 @@ bash install.sh researcher@example.com
 
 | Tool | 用途 |
 |---|---|
-| `search_papers` | 检索一个或多个来源，合并重复记录并返回来源错误 |
-| `get_paper_by_id` | 解析并核验 DOI、PMID 或 arXiv ID |
-| `get_citation` | 为一条已解析记录生成指定格式引用 |
-| `lookup_mesh` | 查询 PubMed MeSH 描述词以构建检索式 |
+| `search_papers` | 搜索 publication 或 trial，合并记录并返回来源状态 |
+| `get_paper_by_id` | 解析 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar URL 或 NCT ID |
+| `get_citation` | 格式化已解析论文；trial 返回结构化边界错误 |
+| `lookup_mesh` | 查询 PubMed MeSH 描述词 |
 
 ## CLI
 
@@ -147,17 +157,17 @@ nature-academic-search citation --input refs.txt --format bib --output reference
 
 ## 能力边界
 
-- 当前只连接 **PubMed、CrossRef 和 arXiv**。没有连接 Google Scholar、Semantic Scholar、
-  Web of Science、Scopus、Embase 或 CNKI 时，不会声称检索过它们。
+- 本项目未连接 Google Scholar、Web of Science、Scopus、Embase、CNKI、万方，不会声称覆盖这些来源。
 - 当前以元数据、标识符、引用和检索策略为核心，不承诺自动获得付费全文。
-- 上游 API 可能限流、超时或暂时不可用；工具会保留成功来源并披露失败。
+- 上游 API 会限流、超时或暂时不可用；预检和搜索结果会逐源披露。
+- 不同来源的引用次数口径不同，不会相加成“全网总引用数”。
 - 引用进入正式稿件前仍应由作者核对原文、出版社页面和期刊要求。
-- `PUBMED_EMAIL` 用于遵守 NCBI 请求规范；项目不会要求把 PyPI Token 写入客户端配置。
 
 ## 开发与维护
 
 ```bash
 python -m pip install -e ".[test]"
+python scripts/sync_skill.py --check
 python -m ruff check src tests
 python -m pytest
 python -m pytest mcp-server/tests
@@ -165,13 +175,12 @@ python -m build
 twine check dist/*
 ```
 
-项目支持 Python 3.10–3.13，并通过 GitHub Actions 测试包行为、旧 MCP 合约和发行构建。
-发布与依赖维护流程见[维护手册](docs/maintenance.md)。
+项目支持 Python 3.10–3.13。发布与依赖维护流程见[维护手册](docs/maintenance.md)。
 
 ## 参与项目
 
-发现查询适配、元数据冲突或安装问题时，请提交 [Issue](https://github.com/wp-a/nature-academic-search/issues)。
-贡献代码前请保留四个 MCP 工具名和结果契约，并为解析、去重或安装行为添加回归测试。
+发现解析、来源冲突或安装问题时，请提交 [Issue](https://github.com/wp-a/nature-academic-search/issues)。
+贡献代码前请保留四个 MCP 工具名、实体边界与结果契约，并添加回归测试。
 
 如果这个项目能让你的文献检索更可追溯，欢迎点一个
 [Star](https://github.com/wp-a/nature-academic-search)；它会帮助更多中文科研用户找到这套工作流。

@@ -4,13 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nature-academic-search"
-version = "0.1.2"
-description = "Academic Paper Search for verified PubMed, CrossRef, and arXiv literature workflows"
+version = "0.2.0"
+description = "Academic Paper Search for verified multi-source literature and trial workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "wp-a" }]
 license = { file = "LICENSE" }
-keywords = ["academic-search", "arxiv", "citation", "crossref", "mcp", "pubmed"]
+keywords = [
+  "academic-search",
+  "arxiv",
+  "citation",
+  "crossref",
+  "mcp",
+  "openalex",
+  "pubmed",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -54,6 +62,7 @@ packages = ["src/nature_academic_search"]
 [tool.hatch.build.targets.wheel.force-include]
 "SKILL.md" = "nature_academic_search/_skill/SKILL.md"
 "references/search-workflows.md" = "nature_academic_search/_skill/references/search-workflows.md"
+"references/source-tiers.md" = "nature_academic_search/_skill/references/source-tiers.md"
 "references/citation-files.md" = "nature_academic_search/_skill/references/citation-files.md"
 "plugins/nature-academic-search/skills/nature-academic-search/agents/openai.yaml" = "nature_academic_search/_skill/agents/openai.yaml"
 

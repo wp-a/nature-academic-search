@@ -11,6 +11,20 @@ timeout = 15
 [arxiv]
 timeout = 30
 
+[openalex]
+api_key = ""
+timeout = 20
+
+[europe_pmc]
+timeout = 20
+
+[semantic_scholar]
+api_key = ""
+timeout = 20
+
+[clinicaltrials_gov]
+timeout = 20
+
 [general]
 default_rows = 5
 max_rows = 50

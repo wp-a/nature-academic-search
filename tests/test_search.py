@@ -4,6 +4,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -68,14 +70,22 @@ def test_arxiv_versions_are_deduplicated_without_losing_order() -> None:
 
 
 class FakeSource:
-    def __init__(self, result: dict | None = None, error: Exception | None = None):
+    def __init__(
+        self,
+        result: dict | None = None,
+        error: Exception | None = None,
+        expected_query: str = "prime editing",
+    ):
         self.result = result
         self.error = error
+        self.expected_query = expected_query
+        self.calls: list[tuple[str, int, dict]] = []
 
     def search(self, query: str, rows: int = 5, **_: object) -> dict:
+        self.calls.append((query, rows, dict(_)))
         if self.error:
             raise self.error
-        assert query == "prime editing"
+        assert query == self.expected_query
         assert rows == 5
         return self.result or {"total": 0, "results": []}
 
@@ -109,5 +119,418 @@ def test_search_all_preserves_partial_results_and_reports_failure() -> None:
     assert result["raw_result_count"] == 2
     assert result["result_count"] == 1
     assert result["sources_queried"] == ["crossref", "pubmed", "arxiv"]
+    assert result["sources_succeeded"] == ["crossref", "arxiv"]
+    assert result["sources_skipped"] == []
     assert result["results"][0]["sources"] == ["crossref", "arxiv"]
-    assert result["errors"] == [{"source": "pubmed", "error": "rate limited"}]
+    assert result["errors"][0]["source"] == "pubmed"
+    assert result["errors"][0]["error"] == "rate limited"
+
+
+def test_search_all_uses_five_default_publication_sources() -> None:
+    source_names = ["crossref", "pubmed", "arxiv", "openalex", "europe_pmc"]
+    adapters = {
+        source: FakeSource({"total": 0, "results": [], "source_meta": {}})
+        for source in source_names
+    }
+
+    result = asyncio.run(
+        search_all(
+            "prime editing",
+            None,
+            rows=5,
+            adapters=adapters,
+        )
+    )
+
+    assert result["sources_queried"] == source_names
+    assert result["sources_succeeded"] == source_names
+    assert result["sources_skipped"] == []
+    assert result["errors"] is None
+    assert all(adapter.calls for adapter in adapters.values())
+
+
+def test_crossref_work_type_is_not_broadcast_to_other_filter_dialects() -> None:
+    source_names = ["crossref", "openalex", "europe_pmc"]
+    adapters = {
+        source: FakeSource({"total": 0, "results": []}) for source in source_names
+    }
+
+    asyncio.run(
+        search_all(
+            "prime editing",
+            source_names,
+            rows=5,
+            filter_type="journal-article",
+            adapters=adapters,
+        )
+    )
+
+    assert adapters["crossref"].calls[0][2] == {
+        "filter_type": "journal-article"
+    }
+    assert adapters["openalex"].calls[0][2] == {}
+    assert adapters["europe_pmc"].calls[0][2] == {}
+
+
+def test_pubmed_and_europe_pmc_merge_by_pmid_and_preserve_provenance() -> None:
+    records = [
+        {
+            "entity_type": "publication",
+            "title": "Example study",
+            "year": 2025,
+            "pmid": "12345678",
+            "source": "pubmed",
+            "source_id": "12345678",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678",
+        },
+        {
+            "entity_type": "publication",
+            "title": "Example study",
+            "year": 2025,
+            "pmid": "12345678",
+            "pmcid": "PMC1234567",
+            "source": "europe_pmc",
+            "source_id": "MED:12345678",
+            "source_url": "https://europepmc.org/article/MED/12345678",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert len(merged) == 1
+    assert merged[0]["pmcid"] == "PMC1234567"
+    assert merged[0]["sources"] == ["pubmed", "europe_pmc"]
+    assert merged[0]["source_records"] == [
+        {
+            "source": "pubmed",
+            "source_id": "12345678",
+            "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678",
+        },
+        {
+            "source": "europe_pmc",
+            "source_id": "MED:12345678",
+            "source_url": "https://europepmc.org/article/MED/12345678",
+        },
+    ]
+
+
+def test_citation_counts_remain_source_attributed_after_merge() -> None:
+    records = [
+        {
+            "title": "Example study",
+            "doi": "10.1000/example",
+            "source": "openalex",
+            "citation_count": 7,
+            "citation_count_source": "openalex",
+            "citation_counts": {"openalex": 7},
+        },
+        {
+            "title": "Example study",
+            "doi": "10.1000/example",
+            "source": "crossref",
+            "citation_count": 9,
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert merged[0]["citation_count"] == 9
+    assert merged[0]["citation_count_source"] == "crossref"
+    assert merged[0]["citation_counts"] == {"openalex": 7, "crossref": 9}
+
+
+def test_conflicting_identifiers_are_retained_without_overwrite() -> None:
+    records = [
+        {
+            "title": "Example study",
+            "year": 2025,
+            "doi": "10.1000/example",
+            "pmid": "12345678",
+            "source": "openalex",
+        },
+        {
+            "title": "Example study",
+            "year": 2025,
+            "doi": "10.1000/example",
+            "pmid": "87654321",
+            "source": "europe_pmc",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert merged[0]["pmid"] == "12345678"
+    assert merged[0]["conflicts"] == [
+        {
+            "field": "pmid",
+            "kept": "12345678",
+            "incoming": "87654321",
+            "source": "europe_pmc",
+        }
+    ]
+
+
+def test_publication_and_trial_titles_never_merge() -> None:
+    records = [
+        {
+            "entity_type": "publication",
+            "title": "Example intervention",
+            "year": 2025,
+            "source": "pubmed",
+        },
+        {
+            "entity_type": "trial",
+            "title": "Example intervention",
+            "year": 2025,
+            "nct_id": "NCT01234567",
+            "source": "clinicaltrials_gov",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert len(merged) == 2
+
+
+def test_legacy_source_records_receive_canonical_id_and_url_provenance() -> None:
+    records = [
+        {
+            "title": "CrossRef record",
+            "doi": "https://doi.org/10.1000/example",
+            "source": "crossref",
+        },
+        {
+            "title": "PubMed record",
+            "pmid": "12345678",
+            "source": "pubmed",
+        },
+        {
+            "title": "arXiv record",
+            "arxiv_id": "2401.12345v2",
+            "source": "arxiv",
+        },
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert [record["source_records"] for record in merged] == [
+        [
+            {
+                "source": "crossref",
+                "source_id": "10.1000/example",
+                "source_url": "https://doi.org/10.1000/example",
+            }
+        ],
+        [
+            {
+                "source": "pubmed",
+                "source_id": "12345678",
+                "source_url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
+            }
+        ],
+        [
+            {
+                "source": "arxiv",
+                "source_id": "2401.12345",
+                "source_url": "https://arxiv.org/abs/2401.12345",
+            }
+        ],
+    ]
+
+
+class FakeEnricher:
+    def __init__(self, responses: dict[str, dict | Exception]):
+        self.responses = responses
+        self.calls: list[str] = []
+
+    def get_by_id(self, identifier: str) -> dict:
+        self.calls.append(identifier)
+        response = self.responses[identifier]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+def test_semantic_scholar_enrichment_uses_strong_ids_and_preserves_failures() -> None:
+    from nature_academic_search.search import enrich_records
+
+    records = [
+        {
+            "title": "By DOI",
+            "doi": "10.1000/example",
+            "source": "crossref",
+        },
+        {
+            "title": "By arXiv",
+            "arxiv_id": "2401.12345",
+            "source": "arxiv",
+        },
+        {"title": "No identifier", "source": "crossref"},
+    ]
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/example": {
+                "title": "By DOI",
+                "doi": "10.1000/example",
+                "source": "semantic_scholar",
+                "semantic_scholar_id": "s2-doi",
+                "citation_count": 11,
+                "citation_count_source": "semantic_scholar",
+                "citation_counts": {"semantic_scholar": 11},
+            },
+            "ARXIV:2401.12345": RuntimeError("rate limited"),
+        }
+    )
+
+    outcome = asyncio.run(
+        enrich_records(
+            records,
+            ["semantic_scholar"],
+            adapters={"semantic_scholar": enricher},
+            limit=3,
+        )
+    )
+
+    assert enricher.calls == ["DOI:10.1000/example", "ARXIV:2401.12345"]
+    assert outcome["results"][0]["semantic_scholar_id"] == "s2-doi"
+    assert outcome["results"][0]["citation_counts"] == {
+        "semantic_scholar": 11
+    }
+    assert outcome["results"][1]["title"] == "By arXiv"
+    assert outcome["errors"][0]["source"] == "semantic_scholar"
+    assert outcome["sources_queried"] == ["semantic_scholar"]
+    assert outcome["sources_succeeded"] == ["semantic_scholar"]
+    assert outcome["skipped"] == [
+        {
+            "source": "semantic_scholar",
+            "record_index": 2,
+            "reason": "missing strong identifier",
+        }
+    ]
+
+
+def test_enrichment_is_bounded_to_requested_limit() -> None:
+    from nature_academic_search.search import enrich_records
+
+    records = [
+        {"title": "One", "doi": "10.1000/one", "source": "crossref"},
+        {"title": "Two", "doi": "10.1000/two", "source": "crossref"},
+    ]
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/one": {
+                "title": "One",
+                "doi": "10.1000/one",
+                "source": "semantic_scholar",
+            }
+        }
+    )
+
+    outcome = asyncio.run(
+        enrich_records(
+            records,
+            ["semantic_scholar"],
+            adapters={"semantic_scholar": enricher},
+            limit=1,
+        )
+    )
+
+    assert len(outcome["results"]) == 2
+    assert enricher.calls == ["DOI:10.1000/one"]
+
+
+def test_search_all_includes_attempted_enrichment_in_source_status() -> None:
+    source = FakeSource(
+        {
+            "total": 1,
+            "results": [
+                {
+                    "title": "By DOI",
+                    "doi": "10.1000/example",
+                    "source": "crossref",
+                }
+            ],
+        }
+    )
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/example": {
+                "title": "By DOI",
+                "doi": "10.1000/example",
+                "source": "semantic_scholar",
+                "semantic_scholar_id": "s2-doi",
+            }
+        }
+    )
+
+    result = asyncio.run(
+        search_all(
+            "prime editing",
+            ["crossref"],
+            rows=5,
+            adapters={
+                "crossref": source,
+                "semantic_scholar": enricher,
+            },
+            enrichers=["semantic_scholar"],
+        )
+    )
+
+    assert result["sources_queried"] == ["crossref", "semantic_scholar"]
+    assert result["sources_succeeded"] == ["crossref", "semantic_scholar"]
+    assert result["enrichment_sources_queried"] == ["semantic_scholar"]
+    assert result["enrichment_sources_succeeded"] == ["semantic_scholar"]
+
+
+def test_trial_search_defaults_to_clinicaltrials_source() -> None:
+    trial_source = FakeSource(
+        {
+            "total": 1,
+            "results": [
+                {
+                    "entity_type": "trial",
+                    "title": "Example trial",
+                    "nct_id": "NCT01234567",
+                    "source": "clinicaltrials_gov",
+                }
+            ],
+        },
+        expected_query="example",
+    )
+
+    result = asyncio.run(
+        search_all(
+            "example",
+            None,
+            rows=5,
+            entity_type="trial",
+            adapters={"clinicaltrials_gov": trial_source},
+        )
+    )
+
+    assert result["entity_type"] == "trial"
+    assert result["sources_queried"] == ["clinicaltrials_gov"]
+    assert result["results"][0]["nct_id"] == "NCT01234567"
+
+
+@pytest.mark.parametrize(
+    ("entity_type", "sources"),
+    [
+        ("trial", ["pubmed"]),
+        ("publication", ["clinicaltrials_gov"]),
+        ("unknown", None),
+    ],
+)
+def test_search_rejects_invalid_entity_source_combinations(
+    entity_type: str, sources: list[str] | None
+) -> None:
+    with pytest.raises(ValueError):
+        asyncio.run(
+            search_all(
+                "example",
+                sources,
+                rows=5,
+                entity_type=entity_type,
+                adapters={},
+            )
+        )

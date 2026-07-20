@@ -39,6 +39,46 @@ class Config:
         return int(os.environ.get("ARXIV_TIMEOUT") or self._value("arxiv", "timeout", 30))
 
     @property
+    def openalex_api_key(self) -> str:
+        return os.environ.get("OPENALEX_API_KEY") or self._value(
+            "openalex", "api_key", ""
+        )
+
+    @property
+    def openalex_timeout(self) -> int:
+        return int(
+            os.environ.get("OPENALEX_TIMEOUT")
+            or self._value("openalex", "timeout", 20)
+        )
+
+    @property
+    def semantic_scholar_api_key(self) -> str:
+        return os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or self._value(
+            "semantic_scholar", "api_key", ""
+        )
+
+    @property
+    def semantic_scholar_timeout(self) -> int:
+        return int(
+            os.environ.get("SEMANTIC_SCHOLAR_TIMEOUT")
+            or self._value("semantic_scholar", "timeout", 20)
+        )
+
+    @property
+    def europe_pmc_timeout(self) -> int:
+        return int(
+            os.environ.get("EUROPE_PMC_TIMEOUT")
+            or self._value("europe_pmc", "timeout", 20)
+        )
+
+    @property
+    def clinicaltrials_gov_timeout(self) -> int:
+        return int(
+            os.environ.get("CLINICALTRIALS_GOV_TIMEOUT")
+            or self._value("clinicaltrials_gov", "timeout", 20)
+        )
+
+    @property
     def default_rows(self) -> int:
         return int(os.environ.get("ACADEMIC_SEARCH_DEFAULT_ROWS") or 5)
 

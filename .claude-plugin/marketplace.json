@@ -5,12 +5,12 @@
   },
   "metadata": {
     "description": "Academic research skills and MCP tools maintained by wp-a.",
-    "version": "0.1.2"
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "nature-academic-search",
-      "description": "Academic Paper Search for verified, deduplicated literature across PubMed, CrossRef, and arXiv.",
+      "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov.",
       "source": "./plugins/nature-academic-search",
       "strict": true
     }

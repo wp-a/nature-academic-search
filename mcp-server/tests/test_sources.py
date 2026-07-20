@@ -696,6 +696,19 @@ class TestDetectIdType:
         assert _detect_id_type("2301.00001") == "arxiv"
         assert _detect_id_type("2401.12345v1") == "arxiv"
 
+    def test_detect_expanded_source_ids(self):
+        from academic_search_server import _detect_id_type
+
+        assert _detect_id_type("PMC1234567") == "pmcid"
+        assert _detect_id_type("https://openalex.org/W2741809807") == "openalex"
+        assert _detect_id_type("NCT01234567") == "nct"
+        assert (
+            _detect_id_type(
+                "https://www.semanticscholar.org/paper/example/abc123"
+            )
+            == "semantic_scholar"
+        )
+
     def test_detect_doi_with_whitespace(self):
         from academic_search_server import _detect_id_type
 
@@ -727,6 +740,16 @@ class TestResolveIdType:
         from academic_search_server import _resolve_id_type
 
         assert _resolve_id_type("12345678", "pmid") == "pmid"
+
+    def test_explicit_expanded_types(self):
+        from academic_search_server import _resolve_id_type
+
+        assert _resolve_id_type("PMC1234567", "pmcid") == "pmcid"
+        assert _resolve_id_type("W2741809807", "openalex") == "openalex"
+        assert _resolve_id_type("paper-id", "semantic_scholar") == (
+            "semantic_scholar"
+        )
+        assert _resolve_id_type("NCT01234567", "nct") == "nct"
 
     def test_auto_delegates(self):
         from academic_search_server import _resolve_id_type

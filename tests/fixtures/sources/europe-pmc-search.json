@@ -1,0 +1,28 @@
+{
+  "hitCount": 1,
+  "resultList": {
+    "result": [
+      {
+        "id": "12345678",
+        "source": "MED",
+        "pmid": "12345678",
+        "pmcid": "PMC1234567",
+        "doi": "10.1000/example",
+        "title": "Example study",
+        "authorList": {
+          "author": [
+            {
+              "fullName": "Researcher One"
+            }
+          ]
+        },
+        "journalTitle": "Example Journal",
+        "pubYear": "2025",
+        "firstPublicationDate": "2025-02-03",
+        "pubType": "research article",
+        "isOpenAccess": "Y",
+        "hasPDF": "Y"
+      }
+    ]
+  }
+}

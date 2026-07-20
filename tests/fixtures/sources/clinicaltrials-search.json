@@ -1,0 +1,71 @@
+{
+  "totalCount": 1,
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT01234567",
+          "briefTitle": "Example trial",
+          "officialTitle": "A fictional example trial"
+        },
+        "statusModule": {
+          "overallStatus": "RECRUITING",
+          "startDateStruct": {
+            "date": "2025-01"
+          },
+          "completionDateStruct": {
+            "date": "2027-06"
+          },
+          "studyFirstPostDateStruct": {
+            "date": "2025-01-15"
+          },
+          "studyFirstSubmitDate": "2025-01-10",
+          "studyFirstPostDate": "2025-01-15",
+          "lastUpdatePostDateStruct": {
+            "date": "2026-07-01"
+          }
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "enrollmentInfo": {
+            "count": 120,
+            "type": "ESTIMATED"
+          }
+        },
+        "conditionsModule": {
+          "conditions": [
+            "Example condition"
+          ]
+        },
+        "armsInterventionsModule": {
+          "interventions": [
+            {
+              "type": "DRUG",
+              "name": "Example intervention"
+            }
+          ]
+        },
+        "sponsorCollaboratorsModule": {
+          "leadSponsor": {
+            "name": "Example University"
+          }
+        },
+        "contactsLocationsModule": {
+          "locations": [
+            {
+              "facility": "Example Hospital",
+              "city": "Example City",
+              "country": "Example Country"
+            }
+          ]
+        }
+      },
+      "derivedSection": {
+        "miscInfoModule": {
+          "versionHolder": "2026-07-20"
+        }
+      }
+    }
+  ],
+  "nextPageToken": null
+}

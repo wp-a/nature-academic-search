@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "count": 1,
+    "cost_usd": 0.001
+  },
+  "results": [
+    {
+      "id": "https://openalex.org/W1234567890",
+      "doi": "https://doi.org/10.1000/example",
+      "display_name": "Example study",
+      "publication_year": 2025,
+      "publication_date": "2025-02-03",
+      "type": "article",
+      "cited_by_count": 7,
+      "ids": {
+        "pmid": "https://pubmed.ncbi.nlm.nih.gov/12345678",
+        "pmcid": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234567"
+      },
+      "authorships": [
+        {
+          "author": {
+            "display_name": "Researcher One"
+          }
+        }
+      ],
+      "abstract_inverted_index": {
+        "A": [0],
+        "fictional": [1],
+        "abstract.": [2]
+      },
+      "primary_location": {
+        "landing_page_url": "https://example.test/article",
+        "pdf_url": "https://example.test/article.pdf",
+        "source": {
+          "display_name": "Example Journal"
+        }
+      },
+      "open_access": {
+        "is_oa": true,
+        "oa_url": "https://example.test/article.pdf"
+      }
+    }
+  ]
+}

@@ -1,43 +1,34 @@
-# Dedup Engine
+# 去重与合并规则
 
-Unified deduplication logic shared by all workflows that merge literature result lists
-(Workflow 1 multi-source search, Workflow 2 citation verification, Workflow 5a related papers).
+实际实现位于统一搜索层；本页解释输出，不替代代码和测试。
 
-## Primary Key: DOI
+## 实体命名空间
 
-1. Extract DOI from each record. Match `10.\d{4,}/[^\s]+` pattern.
-2. Strip leading `https://doi.org/` prefix if present.
-3. Normalize: lowercase, trim whitespace.
-4. Records sharing a normalized DOI are duplicates.
+publication 与 trial 永远分开。即使题名和年份相同，也不能跨 `entity_type` 合并。
 
-## Fallback Key: Title + First Author
+## 强标识符
 
-When DOI is missing from either record:
+在同一实体类型内，优先使用规范化标识符：
 
-1. **Normalize titles:**
-   - Lowercase
-   - Remove punctuation (.,;:!?()[]"")
-   - Remove English stopwords (a, an, the, in, of, for, on, to, and, with, by, et, al)
-   - Collapse multiple whitespace to single space
-   - Strip leading/trailing whitespace
-2. **Tokenize:** split normalized titles into word tokens.
-3. **Compute Jaccard similarity:**
-   - `intersection = set(tokens_A) & set(tokens_B)`
-   - `union = set(tokens_A) | set(tokens_B)`
-   - `similarity = len(intersection) / len(union)` if union non-empty, else 0
-4. **Compare first-author surnames:**
-   - Extract surname: take the first author string, split on commas, take first token, lowercase, strip.
-   - Two records match if surnames are identical AND Jaccard similarity >= 0.90.
+1. DOI（去掉 `https://doi.org/`，转小写）。
+2. PMID、PMCID。
+3. arXiv ID（去版本号）。
+4. OpenAlex ID、Semantic Scholar paper ID。
+5. trial 使用 NCT ID。
 
-## Merge Preference
+共享强标识符的记录可合并。标识符冲突写入 `conflicts`，不得静默覆盖。
 
-When a duplicate pair spans sources, prefer the record with (in order):
-1. More complete metadata (DOI + volume + pages all present)
-2. Publisher source over preprint source
-3. Higher citation count as tiebreaker
+## 弱回退
 
-## Usage in Workflows
+没有共享强标识符时，使用标准化题名与年份作为保守回退。年份不同或实体类型不同则保持为独立记录。
+弱匹配只能帮助折叠明显重复项，不能证明引用或版本关系。
 
-- **Workflow 1 (Multi-source search):** After parallel MCP search, run dedup on merged result list before ranking/presentation.
-- **Workflow 2 (Citation verification):** When a document reference resolves to multiple candidate matches, use dedup to collapse identical candidates before classification.
-- **Workflow 5a (Related papers):** When related-paper results overlap with the source search, dedup before presenting.
+## 合并结果
+
+- `sources`：贡献记录的来源列表。
+- `source_records`：每个来源的原始 ID 与 URL。
+- `conflicts`：被保留值与冲突来源值。
+- `citation_counts`：按来源保存的引用次数。
+- `citation_count_source`：兼容字段 `citation_count` 当前采用的来源。
+
+不同来源的引用次数口径不能相加。代表记录保持首次结果顺序，补齐缺失字段并保留来源溯源。

@@ -431,27 +431,10 @@ refs.txt format:
         return 0
 
     if args.preflight:
-        from .preflight import check_endpoints
+        from .preflight import check_endpoints, print_report
+
         results = check_endpoints()
-        # Print report
-        print("PRE-FLIGHT REPORT")
-        all_ok = True
-        for name, info in results.items():
-            status = "OK" if info["ok"] else "FAIL"
-            detail = f"({info['time']:.1f}s)" if info["ok"] else f"({info['error']})"
-            print(f"  {name:25s}: {status} {detail}")
-            if not info["ok"]:
-                all_ok = False
-        reachable = sum(1 for v in results.values() if v["ok"])
-        total = len(results)
-        print(f"  {reachable}/{total} endpoints reachable.")
-        if not all_ok:
-            print(
-                "  Affected: format-converter downloads for unreachable endpoints "
-                "(MCP tools unaffected)."
-            )
-            return 1
-        return 0
+        return 0 if print_report(results) else 1
 
     if not any(
         [

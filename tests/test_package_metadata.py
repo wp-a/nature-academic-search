@@ -24,7 +24,7 @@ def test_package_exposes_release_version() -> None:
     finally:
         sys.path.pop(0)
 
-    assert package.__version__ == "0.1.2"
+    assert package.__version__ == "0.2.0"
 
 
 def test_project_declares_supported_python_and_mcp_versions() -> None:
@@ -41,3 +41,9 @@ def test_project_exposes_cli_and_mcp_entry_points() -> None:
         "nature-academic-search": "nature_academic_search.cli:main",
         "nature-academic-search-mcp": "nature_academic_search.server:main",
     }
+
+
+def test_source_expansion_uses_the_existing_requests_dependency() -> None:
+    project = load_project()["project"]
+
+    assert any(dependency.startswith("requests") for dependency in project["dependencies"])
