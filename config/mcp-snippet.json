@@ -4,7 +4,15 @@
       "command": "python3",
       "args": ["<YOUR_HOME>/.claude/mcp_servers/academic-search/academic_search_server.py"],
       "env": {
-        "PUBMED_EMAIL": "<YOUR_EMAIL>"
+        "PUBMED_EMAIL": "<YOUR_EMAIL>",
+        "NCBI_API_KEY": "",
+        "CROSSREF_MAILTO": "<YOUR_EMAIL>",
+        "OPENALEX_API_KEY": "",
+        "SEMANTIC_SCHOLAR_API_KEY": "",
+        "OPENALEX_TIMEOUT": "20",
+        "SEMANTIC_SCHOLAR_TIMEOUT": "20",
+        "EUROPE_PMC_TIMEOUT": "20",
+        "CLINICALTRIALS_GOV_TIMEOUT": "20"
       }
     }
   }

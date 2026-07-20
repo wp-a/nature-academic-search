@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("serve", help="Run the MCP server over stdio")
     subparsers.add_parser(
         "preflight",
-        help="Check PubMed, CrossRef, and arXiv connectivity",
+        help="Check academic source connectivity",
     )
     subparsers.add_parser(
         "citation",
