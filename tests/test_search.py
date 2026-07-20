@@ -4,6 +4,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -68,16 +70,22 @@ def test_arxiv_versions_are_deduplicated_without_losing_order() -> None:
 
 
 class FakeSource:
-    def __init__(self, result: dict | None = None, error: Exception | None = None):
+    def __init__(
+        self,
+        result: dict | None = None,
+        error: Exception | None = None,
+        expected_query: str = "prime editing",
+    ):
         self.result = result
         self.error = error
+        self.expected_query = expected_query
         self.calls: list[tuple[str, int, dict]] = []
 
     def search(self, query: str, rows: int = 5, **_: object) -> dict:
         self.calls.append((query, rows, dict(_)))
         if self.error:
             raise self.error
-        assert query == "prime editing"
+        assert query == self.expected_query
         assert rows == 5
         return self.result or {"total": 0, "results": []}
 
@@ -358,3 +366,57 @@ def test_enrichment_is_bounded_to_requested_limit() -> None:
 
     assert len(outcome["results"]) == 2
     assert enricher.calls == ["DOI:10.1000/one"]
+
+
+def test_trial_search_defaults_to_clinicaltrials_source() -> None:
+    trial_source = FakeSource(
+        {
+            "total": 1,
+            "results": [
+                {
+                    "entity_type": "trial",
+                    "title": "Example trial",
+                    "nct_id": "NCT01234567",
+                    "source": "clinicaltrials_gov",
+                }
+            ],
+        },
+        expected_query="example",
+    )
+
+    result = asyncio.run(
+        search_all(
+            "example",
+            None,
+            rows=5,
+            entity_type="trial",
+            adapters={"clinicaltrials_gov": trial_source},
+        )
+    )
+
+    assert result["entity_type"] == "trial"
+    assert result["sources_queried"] == ["clinicaltrials_gov"]
+    assert result["results"][0]["nct_id"] == "NCT01234567"
+
+
+@pytest.mark.parametrize(
+    ("entity_type", "sources"),
+    [
+        ("trial", ["pubmed"]),
+        ("publication", ["clinicaltrials_gov"]),
+        ("unknown", None),
+    ],
+)
+def test_search_rejects_invalid_entity_source_combinations(
+    entity_type: str, sources: list[str] | None
+) -> None:
+    with pytest.raises(ValueError):
+        asyncio.run(
+            search_all(
+                "example",
+                sources,
+                rows=5,
+                entity_type=entity_type,
+                adapters={},
+            )
+        )

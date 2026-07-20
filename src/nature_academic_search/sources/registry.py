@@ -40,6 +40,7 @@ def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:
     """Construct only the selected adapters to keep optional sources lazy."""
     from . import (
         ArxivSource,
+        ClinicalTrialsSource,
         CrossRefSource,
         EuropePmcSource,
         OpenAlexSource,
@@ -51,6 +52,7 @@ def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:
         "crossref": CrossRefSource,
         "pubmed": PubMedSource,
         "arxiv": ArxivSource,
+        "clinicaltrials_gov": ClinicalTrialsSource,
         "openalex": OpenAlexSource,
         "europe_pmc": EuropePmcSource,
         "semantic_scholar": SemanticScholarSource,

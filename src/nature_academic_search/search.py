@@ -9,6 +9,8 @@ from typing import Any
 
 from .sources.registry import (
     DEFAULT_PUBLICATION_SOURCES,
+    SOURCE_ENTITY_TYPES,
+    TRIAL_SOURCES,
     build_adapters,
     source_capabilities,
 )
@@ -64,9 +66,26 @@ async def search_all(
     filter_type: str | None = None,
     adapters: Mapping[str, Any] | None = None,
     enrichers: Sequence[str] | None = None,
+    entity_type: str = "publication",
 ) -> dict[str, Any]:
-    selected_sources = list(sources or DEFAULT_PUBLICATION_SOURCES)
+    if entity_type not in {"publication", "trial"}:
+        raise ValueError(f"Unsupported entity_type: {entity_type}")
+    defaults = DEFAULT_PUBLICATION_SOURCES if entity_type == "publication" else TRIAL_SOURCES
+    selected_sources = list(defaults if sources is None else sources)
+    if not selected_sources:
+        raise ValueError("At least one source is required")
+    incompatible = [
+        source
+        for source in selected_sources
+        if SOURCE_ENTITY_TYPES.get(source) != entity_type
+    ]
+    if incompatible:
+        raise ValueError(
+            f"Sources are incompatible with entity_type={entity_type}: {incompatible}"
+        )
     selected_enrichers = list(enrichers or [])
+    if entity_type != "publication" and selected_enrichers:
+        raise ValueError("Trial records do not support publication enrichment")
     needed_sources = list(dict.fromkeys([*selected_sources, *selected_enrichers]))
     selected_adapters = dict(adapters or build_adapters(needed_sources))
     missing = [source for source in needed_sources if source not in selected_adapters]
@@ -116,6 +135,7 @@ async def search_all(
     errors.extend(enrichment["errors"])
     return {
         "total": total,
+        "entity_type": entity_type,
         "sources_queried": selected_sources,
         "sources_succeeded": succeeded,
         "sources_skipped": enrichment["skipped"],
