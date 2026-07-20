@@ -259,3 +259,102 @@ def test_publication_and_trial_titles_never_merge() -> None:
     merged = deduplicate_records(records)
 
     assert len(merged) == 2
+
+
+class FakeEnricher:
+    def __init__(self, responses: dict[str, dict | Exception]):
+        self.responses = responses
+        self.calls: list[str] = []
+
+    def get_by_id(self, identifier: str) -> dict:
+        self.calls.append(identifier)
+        response = self.responses[identifier]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
+def test_semantic_scholar_enrichment_uses_strong_ids_and_preserves_failures() -> None:
+    from nature_academic_search.search import enrich_records
+
+    records = [
+        {
+            "title": "By DOI",
+            "doi": "10.1000/example",
+            "source": "crossref",
+        },
+        {
+            "title": "By arXiv",
+            "arxiv_id": "2401.12345",
+            "source": "arxiv",
+        },
+        {"title": "No identifier", "source": "crossref"},
+    ]
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/example": {
+                "title": "By DOI",
+                "doi": "10.1000/example",
+                "source": "semantic_scholar",
+                "semantic_scholar_id": "s2-doi",
+                "citation_count": 11,
+                "citation_count_source": "semantic_scholar",
+                "citation_counts": {"semantic_scholar": 11},
+            },
+            "ARXIV:2401.12345": RuntimeError("rate limited"),
+        }
+    )
+
+    outcome = asyncio.run(
+        enrich_records(
+            records,
+            ["semantic_scholar"],
+            adapters={"semantic_scholar": enricher},
+            limit=3,
+        )
+    )
+
+    assert enricher.calls == ["DOI:10.1000/example", "ARXIV:2401.12345"]
+    assert outcome["results"][0]["semantic_scholar_id"] == "s2-doi"
+    assert outcome["results"][0]["citation_counts"] == {
+        "semantic_scholar": 11
+    }
+    assert outcome["results"][1]["title"] == "By arXiv"
+    assert outcome["errors"][0]["source"] == "semantic_scholar"
+    assert outcome["skipped"] == [
+        {
+            "source": "semantic_scholar",
+            "record_index": 2,
+            "reason": "missing strong identifier",
+        }
+    ]
+
+
+def test_enrichment_is_bounded_to_requested_limit() -> None:
+    from nature_academic_search.search import enrich_records
+
+    records = [
+        {"title": "One", "doi": "10.1000/one", "source": "crossref"},
+        {"title": "Two", "doi": "10.1000/two", "source": "crossref"},
+    ]
+    enricher = FakeEnricher(
+        {
+            "DOI:10.1000/one": {
+                "title": "One",
+                "doi": "10.1000/one",
+                "source": "semantic_scholar",
+            }
+        }
+    )
+
+    outcome = asyncio.run(
+        enrich_records(
+            records,
+            ["semantic_scholar"],
+            adapters={"semantic_scholar": enricher},
+            limit=1,
+        )
+    )
+
+    assert len(outcome["results"]) == 2
+    assert enricher.calls == ["DOI:10.1000/one"]

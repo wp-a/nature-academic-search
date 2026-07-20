@@ -5,6 +5,7 @@ from .crossref import CrossRefSource
 from .europe_pmc import EuropePmcSource
 from .openalex import OpenAlexSource
 from .pubmed import PubMedSource
+from .semantic_scholar import SemanticScholarSource
 
 __all__ = [
     "ArxivSource",
@@ -12,4 +13,5 @@ __all__ = [
     "EuropePmcSource",
     "OpenAlexSource",
     "PubMedSource",
+    "SemanticScholarSource",
 ]

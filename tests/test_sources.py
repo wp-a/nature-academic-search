@@ -18,9 +18,10 @@ def test_sources_import_without_repository_working_directory(tmp_path: Path) -> 
             "-c",
             (
                 "from nature_academic_search.sources import "
-                "ArxivSource, CrossRefSource, EuropePmcSource, OpenAlexSource, PubMedSource; "
+                "ArxivSource, CrossRefSource, EuropePmcSource, OpenAlexSource, "
+                "PubMedSource, SemanticScholarSource; "
                 "assert all((ArxivSource, CrossRefSource, EuropePmcSource, "
-                "OpenAlexSource, PubMedSource))"
+                "OpenAlexSource, PubMedSource, SemanticScholarSource))"
             ),
         ],
         cwd=tmp_path,

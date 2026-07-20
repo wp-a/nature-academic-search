@@ -44,6 +44,7 @@ def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:
         EuropePmcSource,
         OpenAlexSource,
         PubMedSource,
+        SemanticScholarSource,
     )
 
     factories = {
@@ -52,6 +53,7 @@ def build_adapters(sources: list[str] | tuple[str, ...]) -> dict[str, object]:
         "arxiv": ArxivSource,
         "openalex": OpenAlexSource,
         "europe_pmc": EuropePmcSource,
+        "semantic_scholar": SemanticScholarSource,
     }
     unknown = [source for source in sources if source not in factories]
     if unknown:

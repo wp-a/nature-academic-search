@@ -63,10 +63,13 @@ async def search_all(
     *,
     filter_type: str | None = None,
     adapters: Mapping[str, Any] | None = None,
+    enrichers: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     selected_sources = list(sources or DEFAULT_PUBLICATION_SOURCES)
-    selected_adapters = dict(adapters or build_adapters(selected_sources))
-    missing = [source for source in selected_sources if source not in selected_adapters]
+    selected_enrichers = list(enrichers or [])
+    needed_sources = list(dict.fromkeys([*selected_sources, *selected_enrichers]))
+    selected_adapters = dict(adapters or build_adapters(needed_sources))
+    missing = [source for source in needed_sources if source not in selected_adapters]
     if missing:
         raise ValueError(f"Missing adapters for sources: {missing}")
     tasks = [
@@ -103,17 +106,70 @@ async def search_all(
             raw_records.append(record)
 
     results = deduplicate_records(raw_records)
+    enrichment = await enrich_records(
+        results,
+        selected_enrichers,
+        adapters=selected_adapters,
+        limit=rows,
+    )
+    results = enrichment["results"]
+    errors.extend(enrichment["errors"])
     return {
         "total": total,
         "sources_queried": selected_sources,
         "sources_succeeded": succeeded,
-        "sources_skipped": [],
+        "sources_skipped": enrichment["skipped"],
+        "enrichment_sources": selected_enrichers,
         "source_meta": source_meta,
         "raw_result_count": len(raw_records),
         "result_count": len(results),
         "results": results,
         "errors": errors or None,
     }
+
+
+async def enrich_records(
+    records: Sequence[Mapping[str, Any]],
+    enrichers: Sequence[str],
+    *,
+    adapters: Mapping[str, Any] | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Enrich a bounded set of records using strong identifiers only."""
+    results = [_prepare_record(record) for record in records]
+    if not enrichers:
+        return {"results": results, "errors": [], "skipped": []}
+
+    selected_adapters = dict(adapters or build_adapters(list(enrichers)))
+    errors: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    upper_bound = len(results) if limit is None else min(max(limit, 0), len(results))
+
+    for source in enrichers:
+        if "enrich" not in source_capabilities(source):
+            raise ValueError(f"Source does not support enrichment: {source}")
+        adapter = selected_adapters[source]
+        for index, record in enumerate(results[:upper_bound]):
+            identifier = _strong_identifier(record)
+            if identifier is None:
+                skipped.append(
+                    {
+                        "source": source,
+                        "record_index": index,
+                        "reason": "missing strong identifier",
+                    }
+                )
+                continue
+            try:
+                incoming = await asyncio.to_thread(adapter.get_by_id, identifier)
+            except Exception as exc:
+                error = _source_error(source, exc)
+                error["record_index"] = index
+                errors.append(error)
+                continue
+            _merge_record(record, _prepare_record(incoming))
+
+    return {"results": results, "errors": errors, "skipped": skipped}
 
 
 def _search_one(
@@ -282,3 +338,15 @@ def _source_error(source: str, error: BaseException) -> dict[str, Any]:
     if status is not None:
         payload["status"] = status
     return payload
+
+
+def _strong_identifier(record: Mapping[str, Any]) -> str | None:
+    if record.get("doi"):
+        return f"DOI:{record['doi']}"
+    if record.get("arxiv_id"):
+        return f"ARXIV:{record['arxiv_id']}"
+    if record.get("pmid"):
+        return f"PMID:{record['pmid']}"
+    if record.get("semantic_scholar_id"):
+        return str(record["semantic_scholar_id"])
+    return None
