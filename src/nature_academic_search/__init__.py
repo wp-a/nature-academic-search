@@ -1,3 +1,3 @@
-"""Academic search workflows for PubMed, CrossRef, and arXiv."""
+"""Verified multi-source publication and trial search workflows."""
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"

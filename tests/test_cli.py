@@ -35,7 +35,7 @@ def test_version_comes_from_package_metadata() -> None:
     completed = run_module("--version")
 
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip() == "nature-academic-search 0.1.2"
+    assert completed.stdout.strip() == "nature-academic-search 0.2.0"
 
 
 def test_preflight_help_does_not_access_network() -> None:
