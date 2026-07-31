@@ -17,6 +17,21 @@ Recorded on 2026-07-31 before the community discovery sprint.
 
 The same 14-day traffic window reported 384 unique repository visitors and 171 unique cloners. About 33 stars arrived during the comparable period, so the first intervention focuses on qualified discovery rather than adding another data source.
 
+## Current Checkpoint
+
+Recorded on 2026-07-31 after the first community-submission round.
+
+| Metric | Current | Evidence |
+|---|---:|---|
+| Qualified submissions | 8 | Open PRs or issues across eight independent ecosystem repositories |
+| Prepared nominations | 3 | One human-only issue packet and two upstream-blocked PR branches; these do not count as submitted |
+| Qualified third-party listings | 0 | No submitted entry is merged into a target default branch yet |
+| Qualified external GitHub mentions | 0 | Current code search found only owner-controlled repositories and one automated package-index mirror |
+| External unique referrers | 6 known in 14 days | Google 4, `github-cn.com` 1, and `chatgpt.com` 1; GitHub and WPIRONMAN traffic excluded |
+| GitHub stars | 51 | Trailing outcome only |
+
+The submission target is reached. The next decision is based on accepted listings and independent references, not on opening more pull requests or publishing another package version.
+
 ## Monthly Check
 
 Next review: **2026-08-30**.

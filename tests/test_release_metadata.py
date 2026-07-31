@@ -137,11 +137,30 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "Academic and AI-for-science",
         "Agent Skills",
         "MCP catalogs and registries",
+        "Current Checkpoint",
         "human action required",
         "submission_url",
         "prepared",
+        "https://github.com/cocoafun/awesome-academic-skills/pull/2",
+        "https://github.com/ai4s-research/awesome-ai-for-science/pull/86",
+        "https://github.com/modelscope/Awesome-Vibe-Research/pull/17",
+        "https://github.com/MinhaoXiong/awesome-automated-research/pull/7",
+        "https://github.com/VoltAgent/awesome-agent-skills/pull/860",
+        "https://github.com/punkpeye/awesome-mcp-servers/pull/11253",
+        "https://github.com/TensorBlock/awesome-mcp-servers/issues/1491",
+        "https://github.com/in-fun/mcpbar/pull/5",
     ):
         assert required in submissions
+
+    assert "| Qualified submissions | 8 |" in growth
+    assert "| Qualified third-party listings | 0 |" in growth
+    assert "The submission target is reached" in growth
+
+    human_packet = read(
+        "docs/community-submission-packets/o0000-code-awesome-academic-skills.md"
+    )
+    assert "Do not submit this packet automatically" in human_packet
+    assert "Human Checklist" in human_packet
 
 
 def test_real_result_examples_are_dated_grounded_and_rendered() -> None:

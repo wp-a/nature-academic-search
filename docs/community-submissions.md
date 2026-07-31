@@ -16,28 +16,38 @@ This ledger records target-specific discovery work. It separates submissions fro
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `cosen1024/awesome-academic-skills` | Data PR | planned | - | Skill/plugin entries only; pin the reviewed commit. |
-| `cocoafun/awesome-academic-skills` | PR | planned | - | Academic tool and MCP category. |
-| `ai4s-research/awesome-ai-for-science` | PR | planned | - | Confirm current literature-tool category. |
-| `modelscope/Awesome-Vibe-Research` | PR | planned | - | Literature Search, Citation & Paper Tools. |
-| `MinhaoXiong/awesome-automated-research` | PR | planned | - | Confirm scope before editing generated data. |
-| `O0000-code/awesome-academic-skills` | Issue form packet | prepared | https://github.com/O0000-code/awesome-academic-skills/issues/new?template=recommend-skill.yml | Human action required: contribution policy requires the recommendation itself to be submitted by a human. |
+| `cosen1024/awesome-academic-skills` | Data PR | skipped | - | Its validator requires every entry date to equal the catalog-wide verification date; adding a current entry would require falsely redating or re-verifying all 39 existing entries. |
+| `cocoafun/awesome-academic-skills` | PR | submitted | https://github.com/cocoafun/awesome-academic-skills/pull/2 | One factual entry in Literature Review & Paper Discovery. |
+| `ai4s-research/awesome-ai-for-science` | PR | submitted | https://github.com/ai4s-research/awesome-ai-for-science/pull/86 | One entry in Literature & Knowledge Management. |
+| `modelscope/Awesome-Vibe-Research` | PR | submitted | https://github.com/modelscope/Awesome-Vibe-Research/pull/17 | Includes the dated Chinese topic-scoping result as the practice link. |
+| `MinhaoXiong/awesome-automated-research` | PR | submitted | https://github.com/MinhaoXiong/awesome-automated-research/pull/7 | English and Chinese literature-tool rows. |
+| `O0000-code/awesome-academic-skills` | Issue form packet | prepared | [human submission packet](community-submission-packets/o0000-code-awesome-academic-skills.md) | Human action required: contribution policy requires the recommendation itself to be submitted by a human. |
 
 ## Agent Skills
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `VoltAgent/awesome-agent-skills` | PR | planned | - | Confirm repository-level Skill submission format. |
+| `VoltAgent/awesome-agent-skills` | PR | submitted | https://github.com/VoltAgent/awesome-agent-skills/pull/860 | Community Skills / Specialized Domains; description kept within 10 words. |
 
 ## MCP catalogs and registries
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `punkpeye/awesome-mcp-servers` | PR | planned | - | Confirm stdio/Python entry format. |
-| `appcypher/awesome-mcp-servers` | PR | planned | - | Confirm category and alphabetical ordering. |
-| `wong2/awesome-mcp-servers` | PR | planned | - | Confirm whether community PRs remain accepted. |
-| `TensorBlock/awesome-mcp-servers` | Issue form | planned | - | Use its structured add-server intake if stdio packages qualify. |
-| `in-fun/mcpbar` | Manifest PR | planned | - | Submit only if the existing `uvx` package satisfies the manifest schema. |
+| `punkpeye/awesome-mcp-servers` | PR | submitted | https://github.com/punkpeye/awesome-mcp-servers/pull/11253 | Agent opt-in title used; repository submission check passed. |
+| `appcypher/awesome-mcp-servers` | PR branch | prepared | https://github.com/appcypher/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
+| `wong2/awesome-mcp-servers` | PR branch | prepared | https://github.com/wong2/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
+| `TensorBlock/awesome-mcp-servers` | Issue form | submitted | https://github.com/TensorBlock/awesome-mcp-servers/issues/1491 | Intake automation opened review PR [#1492](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492); the target counts once. |
+| `in-fun/mcpbar` | Manifest PR | submitted | https://github.com/in-fun/mcpbar/pull/5 | Manifest pins package `0.2.0`; JSON parse and published `uvx` entrypoint checks passed. |
+
+## Current Checkpoint
+
+Recorded on 2026-07-31 after the first submission round.
+
+| Metric | Current | Counting note |
+|---|---:|---|
+| Qualified submissions | 8 | Eight independent targets have an open, permitted PR or issue. |
+| Prepared submissions | 3 | One human-only packet and two compare branches; none count as submitted. |
+| Qualified third-party listings | 0 | Open submissions become listings only after merge or registry publication. |
 
 ## Submission Copy Principles
 
