@@ -4,6 +4,14 @@
 **代码状态：** 2026-07-31 当前 `main`（包含 MeSH ESummary 解析修复，尚未作为新 PyPI 版本发布）
 **查询词：** `Artificial Intelligence`、`Education, Medical`
 
+PyPI `0.2.0` 与插件固定版本尚未包含这项修复。复现实测前从当前源码安装：
+
+```bash
+git clone https://github.com/wp-a/nature-academic-search.git
+cd nature-academic-search
+bash install.sh --client both --email researcher@example.com
+```
+
 ## NCBI MeSH 真实返回
 
 ```yaml

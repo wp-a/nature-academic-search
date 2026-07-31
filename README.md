@@ -80,6 +80,14 @@ not_found 或 manual_needed，并解释冲突；不要用搜索结果自动补�
 
 ### PubMed / MeSH 检索
 
+> `lookup_mesh` 的 ESummary 解析修复目前位于 `main`。PyPI `0.2.0` 与插件固定版本尚未包含该修复；要复现下面的 MeSH 案例，请先从当前源码安装：
+
+```bash
+git clone https://github.com/wp-a/nature-academic-search.git
+cd nature-academic-search
+bash install.sh --client both --email researcher@example.com
+```
+
 ```text
 使用 $nature-academic-search 为“生成式 AI 与医学教育”构建 PubMed 起始检索式。
 先分别调用 lookup_mesh 核对 Artificial Intelligence、Generative Artificial Intelligence

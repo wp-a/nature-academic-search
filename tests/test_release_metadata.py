@@ -122,8 +122,16 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "8-12",
         "Release count is not a growth KPI",
         "2026-08-30",
+        "Prepared nominations",
+        "does not count as submitted",
+        "wpironman.top",
     ):
         assert required in growth
+
+    qualified_submission_line = next(
+        line for line in growth.splitlines() if "| Qualified submissions |" in line
+    )
+    assert "human-review packet" not in qualified_submission_line
 
     for required in (
         "Academic and AI-for-science",
@@ -131,6 +139,7 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "MCP catalogs and registries",
         "human action required",
         "submission_url",
+        "prepared",
     ):
         assert required in submissions
 
@@ -180,8 +189,21 @@ def test_readme_leads_to_three_copyable_real_result_cases() -> None:
         "docs/examples/pubmed-mesh.md",
         "本次真实结果",
         "2026-07-31",
+        "git clone https://github.com/wp-a/nature-academic-search.git",
+        "bash install.sh --client both --email researcher@example.com",
+        "PyPI `0.2.0`",
     ):
         assert required in readme
+
+
+def test_mesh_example_discloses_current_main_install_boundary() -> None:
+    example = read("docs/examples/pubmed-mesh.md")
+    installation = read("docs/installation.md")
+
+    for document in (example, installation):
+        assert "git clone https://github.com/wp-a/nature-academic-search.git" in document
+        assert "bash install.sh --client both --email researcher@example.com" in document
+        assert "PyPI `0.2.0`" in document
 
 
 def test_ci_covers_supported_python_and_legacy_contract() -> None:

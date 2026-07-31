@@ -5,6 +5,7 @@ This ledger records target-specific discovery work. It separates submissions fro
 ## Status Vocabulary
 
 - `planned`: target appears relevant but its current policy still needs verification.
+- `prepared`: the target-specific packet is complete, but no permitted submission is open yet.
 - `submitted`: a permitted PR, issue, or registry request is open.
 - `accepted`: the project is visible in the target's default branch or public registry.
 - `declined`: a maintainer declined the entry.
@@ -20,7 +21,7 @@ This ledger records target-specific discovery work. It separates submissions fro
 | `ai4s-research/awesome-ai-for-science` | PR | planned | - | Confirm current literature-tool category. |
 | `modelscope/Awesome-Vibe-Research` | PR | planned | - | Literature Search, Citation & Paper Tools. |
 | `MinhaoXiong/awesome-automated-research` | PR | planned | - | Confirm scope before editing generated data. |
-| `O0000-code/awesome-academic-skills` | Issue form packet | human action required | https://github.com/O0000-code/awesome-academic-skills/issues/new?template=recommend-skill.yml | Contribution policy requires the recommendation itself to be submitted by a human. |
+| `O0000-code/awesome-academic-skills` | Issue form packet | prepared | https://github.com/O0000-code/awesome-academic-skills/issues/new?template=recommend-skill.yml | Human action required: contribution policy requires the recommendation itself to be submitted by a human. |
 
 ## Agent Skills
 
