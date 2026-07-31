@@ -111,6 +111,30 @@ def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
         assert contract in readme
 
 
+def test_community_growth_docs_track_discovery_instead_of_release_count() -> None:
+    growth = read("docs/community-growth.md")
+    submissions = read("docs/community-submissions.md")
+
+    for required in (
+        "Qualified third-party listings",
+        "Qualified external GitHub mentions",
+        "External unique referrers",
+        "8-12",
+        "Release count is not a growth KPI",
+        "2026-08-30",
+    ):
+        assert required in growth
+
+    for required in (
+        "Academic and AI-for-science",
+        "Agent Skills",
+        "MCP catalogs and registries",
+        "human action required",
+        "submission_url",
+    ):
+        assert required in submissions
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 
