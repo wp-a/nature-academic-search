@@ -322,22 +322,44 @@ class PubMedSource:
         if not ids:
             return {"term": term, "results": []}
 
-        # efetch from mesh db to get descriptor details
-        fetch_params: dict[str, Any] = {
+        # MeSH EFetch only supports text records. ESummary provides structured
+        # descriptor names and UIs for the UIDs returned by ESearch.
+        summary_params: dict[str, Any] = {
             "db": "mesh",
             "id": ",".join(ids),
-            "retmode": "xml",
+            "retmode": "json",
+            "version": "2.0",
         }
-        resp = _get("efetch.fcgi", fetch_params)
-        fetch_root = ET.fromstring(resp.content)
+        resp = _get("esummary.fcgi", summary_params)
+        try:
+            payload = resp.json()
+        except ValueError as exc:
+            raise DataSourceError(
+                SOURCE_NAME,
+                "Malformed MeSH summary response",
+                exc,
+            ) from exc
+
+        summary = payload.get("result") if isinstance(payload, dict) else None
+        if not isinstance(summary, dict):
+            raise DataSourceError(SOURCE_NAME, "Malformed MeSH summary response")
 
         results: list[dict[str, str]] = []
-        for descriptor in fetch_root.findall(".//DescriptorRecord"):
-            name_el = descriptor.find("DescriptorName/String")
-            ui_el = descriptor.find("DescriptorUI")
-            name = name_el.text.strip() if name_el is not None and name_el.text else ""
-            ui = ui_el.text.strip() if ui_el is not None and ui_el.text else ""
-            if name:
-                results.append({"name": name, "mesh_id": ui, "ui": ui})
+        for uid in ids:
+            descriptor = summary.get(uid)
+            if not isinstance(descriptor, dict):
+                continue
+            terms = descriptor.get("ds_meshterms")
+            ui = descriptor.get("ds_meshui")
+            name = terms[0] if isinstance(terms, list) and terms else ""
+            if isinstance(name, str) and name.strip():
+                normalized_ui = ui.strip() if isinstance(ui, str) else ""
+                results.append(
+                    {
+                        "name": name.strip(),
+                        "mesh_id": normalized_ui,
+                        "ui": normalized_ui,
+                    }
+                )
 
         return {"term": term, "results": results}

@@ -111,6 +111,103 @@ def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
         assert contract in readme
 
 
+def test_community_growth_docs_track_discovery_instead_of_release_count() -> None:
+    growth = read("docs/community-growth.md")
+    submissions = read("docs/community-submissions.md")
+
+    for required in (
+        "Qualified third-party listings",
+        "Qualified external GitHub mentions",
+        "External unique referrers",
+        "8-12",
+        "Release count is not a growth KPI",
+        "2026-08-30",
+        "Prepared nominations",
+        "does not count as submitted",
+        "wpironman.top",
+    ):
+        assert required in growth
+
+    qualified_submission_line = next(
+        line for line in growth.splitlines() if "| Qualified submissions |" in line
+    )
+    assert "human-review packet" not in qualified_submission_line
+
+    for required in (
+        "Academic and AI-for-science",
+        "Agent Skills",
+        "MCP catalogs and registries",
+        "human action required",
+        "submission_url",
+        "prepared",
+    ):
+        assert required in submissions
+
+
+def test_real_result_examples_are_dated_grounded_and_rendered() -> None:
+    cases = {
+        "topic-scoping": (
+            "large language models medical education",
+            "10.1371/journal.pdig.0000198",
+            "PubMed returned HTTP 429",
+        ),
+        "citation-verification": (
+            "10.1038/nature14539",
+            "Deep learning",
+            "mismatch",
+        ),
+        "pubmed-mesh": (
+            "D001185",
+            "D000098842",
+            "D004501",
+        ),
+    }
+
+    for slug, required_values in cases.items():
+        document = read(f"docs/examples/{slug}.md")
+        assert "2026-07-31" in document
+        assert "TODO" not in document
+        assert "<待" not in document
+        for required in required_values:
+            assert required in document
+
+        image = ROOT / "docs" / "assets" / f"academic-search-{slug}.png"
+        assert image.stat().st_size > 50_000
+
+
+def test_readme_leads_to_three_copyable_real_result_cases() -> None:
+    readme = read("README.md")
+
+    for required in (
+        "academic-search-topic-scoping.png",
+        "三个可复制的中文场景",
+        "开题检索",
+        "AI 幻觉引用核验",
+        "PubMed / MeSH 检索",
+        "docs/examples/topic-scoping.md",
+        "docs/examples/citation-verification.md",
+        "docs/examples/pubmed-mesh.md",
+        "本次真实结果",
+        "2026-07-31",
+        "git clone https://github.com/wp-a/nature-academic-search.git",
+        "bash install.sh --client both --email researcher@example.com",
+        "PyPI `0.2.0` 与插件固定版本尚未包含该修复",
+    ):
+        assert required in readme
+
+
+def test_mesh_example_discloses_current_main_install_boundary() -> None:
+    example = read("docs/examples/pubmed-mesh.md")
+    installation = read("docs/installation.md")
+
+    for document in (example, installation):
+        assert "当前 `main`" in document or "current `main`" in document
+        assert "git clone https://github.com/wp-a/nature-academic-search.git" in document
+        assert "bash install.sh --client both --email researcher@example.com" in document
+        assert "PyPI `0.2.0`" in document
+        assert "尚未包含" in document or "not present" in document
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 

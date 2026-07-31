@@ -32,7 +32,17 @@ nature-academic-search install \
 
 ## Install from this repository
 
-The legacy positional email remains supported:
+Use the current `main` source when testing changes that have not been released to
+PyPI. For example, the 2026-07-31 MeSH ESummary parsing fix is not present in
+PyPI `0.2.0` or the plugin version pinned to that package:
+
+```bash
+git clone https://github.com/wp-a/nature-academic-search.git
+cd nature-academic-search
+bash install.sh --client both --email researcher@example.com
+```
+
+The legacy positional email remains supported from an existing checkout:
 
 ```bash
 bash install.sh researcher@example.com
