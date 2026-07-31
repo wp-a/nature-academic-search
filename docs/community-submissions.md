@@ -33,7 +33,7 @@ This ledger records target-specific discovery work. It separates submissions fro
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `punkpeye/awesome-mcp-servers` | PR | submitted | https://github.com/punkpeye/awesome-mcp-servers/pull/11253 | Agent opt-in title used; repository submission check passed. |
+| `punkpeye/awesome-mcp-servers` | PR | submitted | https://github.com/punkpeye/awesome-mcp-servers/pull/11253 | Agent opt-in title used and repository check passed; acceptance still requires a signed-in Glama listing and score badge. |
 | `appcypher/awesome-mcp-servers` | PR branch | prepared | https://github.com/appcypher/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
 | `wong2/awesome-mcp-servers` | PR branch | prepared | https://github.com/wong2/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
 | `TensorBlock/awesome-mcp-servers` | Issue form | submitted | https://github.com/TensorBlock/awesome-mcp-servers/issues/1491 | Intake automation opened review PR [#1492](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492); the target counts once. |
