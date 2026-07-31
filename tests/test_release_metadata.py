@@ -135,6 +135,37 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         assert required in submissions
 
 
+def test_real_result_examples_are_dated_grounded_and_rendered() -> None:
+    cases = {
+        "topic-scoping": (
+            "large language models medical education",
+            "10.1371/journal.pdig.0000198",
+            "PubMed returned HTTP 429",
+        ),
+        "citation-verification": (
+            "10.1038/nature14539",
+            "Deep learning",
+            "mismatch",
+        ),
+        "pubmed-mesh": (
+            "D001185",
+            "D000098842",
+            "D004501",
+        ),
+    }
+
+    for slug, required_values in cases.items():
+        document = read(f"docs/examples/{slug}.md")
+        assert "2026-07-31" in document
+        assert "TODO" not in document
+        assert "<待" not in document
+        for required in required_values:
+            assert required in document
+
+        image = ROOT / "docs" / "assets" / f"academic-search-{slug}.png"
+        assert image.stat().st_size > 50_000
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 
