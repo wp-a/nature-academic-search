@@ -1,7 +1,7 @@
 # PubMed / MeSH：先核对主题词，再组合检索式
 
 **实测日期：** 2026-07-31（Asia/Shanghai）  
-**工具版本：** Academic Paper Search 0.2.0  
+**代码状态：** 2026-07-31 当前 `main`（包含 MeSH ESummary 解析修复，尚未作为新 PyPI 版本发布）
 **查询词：** `Artificial Intelligence`、`Education, Medical`
 
 ## NCBI MeSH 真实返回
