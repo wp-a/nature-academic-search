@@ -11,7 +11,13 @@
 
 [![CI](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml/badge.svg)](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![Python](https://img.shields.io/pypi/pyversions/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![License](https://img.shields.io/github/license/wp-a/nature-academic-search.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/wp-a/nature-academic-search?style=social)](https://github.com/wp-a/nature-academic-search/stargazers)
 
-[快速开始](#30-秒开始) · [直接这样问](#直接这样问) · [数据源](#数据源如何分工) · [能力边界](#能力边界)
+[真实案例](#三个可复制的中文场景) · [快速开始](#30-秒开始) · [数据源](#数据源如何分工) · [能力边界](#能力边界)
+
+<a href="docs/examples/topic-scoping.md">
+  <img src="docs/assets/academic-search-topic-scoping.png" width="1000" alt="Academic Paper Search 2026-07-31 多源开题检索真实结果">
+</a>
+
+<sub>本次真实结果 · 2026-07-31：四个来源成功，PubMed 429 被明确披露；点击查看完整记录与边界。</sub>
 
 </div>
 
@@ -46,6 +52,42 @@ results:
     citation_counts: {openalex: <来源计数>, semantic_scholar: <来源计数>}
     citation_count_source: openalex
 ```
+
+## 三个可复制的中文场景
+
+### 开题检索
+
+```text
+使用 $nature-academic-search 为“生成式 AI 在医学教育中的应用与风险”做开题检索。
+先记录检索日期和纳入范围，再使用默认论文源检索；按 DOI、PMID、PMCID、arXiv
+和 OpenAlex ID 去重。把正式论文、预印本和未解决记录分开，逐源报告成功、失败与
+限流状态。不要把本次初筛描述成系统综述，也不要根据引用次数判断证据质量。
+```
+
+[查看 2026-07-31 实测记录](docs/examples/topic-scoping.md)
+
+### AI 幻觉引用核验
+
+```text
+使用 $nature-academic-search 核验下面的参考文献。先从 DOI / PMID / PMCID / arXiv ID
+取回原始元数据，再逐项比较题名、作者、年份和期刊。输出 verified、mismatch、
+not_found 或 manual_needed，并解释冲突；不要用搜索结果自动补成一条看似完整的引用。
+
+待核验引用：在这里粘贴引用
+```
+
+[查看 DOI 与题名冲突实测](docs/examples/citation-verification.md)
+
+### PubMed / MeSH 检索
+
+```text
+使用 $nature-academic-search 为“生成式 AI 与医学教育”构建 PubMed 起始检索式。
+先分别调用 lookup_mesh 核对 Artificial Intelligence、Generative Artificial Intelligence
+和 Education, Medical 的规范主题词与 MeSH ID；再把 MeSH 与题名/摘要自由词分组组合。
+输出每个主题词的核验结果、最终检索式和仍需人工调整的边界，不要把关键词直接猜成 MeSH。
+```
+
+[查看 NCBI MeSH 实测记录](docs/examples/pubmed-mesh.md)
 
 ## 30 秒开始
 

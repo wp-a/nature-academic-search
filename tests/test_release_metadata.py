@@ -166,6 +166,24 @@ def test_real_result_examples_are_dated_grounded_and_rendered() -> None:
         assert image.stat().st_size > 50_000
 
 
+def test_readme_leads_to_three_copyable_real_result_cases() -> None:
+    readme = read("README.md")
+
+    for required in (
+        "academic-search-topic-scoping.png",
+        "三个可复制的中文场景",
+        "开题检索",
+        "AI 幻觉引用核验",
+        "PubMed / MeSH 检索",
+        "docs/examples/topic-scoping.md",
+        "docs/examples/citation-verification.md",
+        "docs/examples/pubmed-mesh.md",
+        "本次真实结果",
+        "2026-07-31",
+    ):
+        assert required in readme
+
+
 def test_ci_covers_supported_python_and_legacy_contract() -> None:
     workflow = read(".github/workflows/ci.yml")
 
