@@ -119,7 +119,9 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "Qualified third-party listings",
         "Qualified external GitHub mentions",
         "External unique referrers",
-        "8-12",
+        "4-6 high-authority targets",
+        "at least 100 GitHub stars",
+        "previous 180 days",
         "Release count is not a growth KPI",
         "2026-08-30",
         "Prepared nominations",
@@ -141,6 +143,7 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "human action required",
         "submission_url",
         "prepared",
+        "withdrawn",
         "https://github.com/cocoafun/awesome-academic-skills/pull/2",
         "https://github.com/ai4s-research/awesome-ai-for-science/pull/86",
         "https://github.com/modelscope/Awesome-Vibe-Research/pull/17",
@@ -152,15 +155,10 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
     ):
         assert required in submissions
 
-    assert "| Qualified submissions | 8 |" in growth
+    assert "| Qualified submissions | 6 |" in growth
     assert "| Qualified third-party listings | 0 |" in growth
-    assert "The submission target is reached" in growth
-
-    human_packet = read(
-        "docs/community-submission-packets/o0000-code-awesome-academic-skills.md"
-    )
-    assert "Do not submit this packet automatically" in human_packet
-    assert "Human Checklist" in human_packet
+    assert "Skip repositories below 100 stars" in growth
+    assert "| Withdrawn submissions | 2 |" in submissions
 
 
 def test_real_result_examples_are_dated_grounded_and_rendered() -> None:

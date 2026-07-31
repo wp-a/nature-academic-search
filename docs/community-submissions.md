@@ -9,19 +9,27 @@ This ledger records target-specific discovery work. It separates submissions fro
 - `submitted`: a permitted PR, issue, or registry request is open.
 - `accepted`: the project is visible in the target's default branch or public registry.
 - `declined`: a maintainer declined the entry.
+- `withdrawn`: the submitter closed an open request because it no longer passes the project quality gate.
 - `human action required`: the target explicitly prohibits agent-filed submissions or requires an interactive account-owner step.
 - `skipped`: the target requires an unsupported runtime, packaging format, or claim.
+
+## Target Quality Gate
+
+- Prefer targets with at least 500 GitHub stars.
+- Submit to targets with 100-499 stars only when their audience is an exact fit.
+- Skip targets below 100 stars.
+- Require a non-archived repository with activity in the previous 180 days.
 
 ## Academic and AI-for-science
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `cosen1024/awesome-academic-skills` | Data PR | skipped | - | Its validator requires every entry date to equal the catalog-wide verification date; adding a current entry would require falsely redating or re-verifying all 39 existing entries. |
-| `cocoafun/awesome-academic-skills` | PR | submitted | https://github.com/cocoafun/awesome-academic-skills/pull/2 | One factual entry in Literature Review & Paper Discovery. |
+| `cosen1024/awesome-academic-skills` | Data PR | skipped | - | 6 stars at review time; also has a catalog-wide date invariant that prevents an honest minimal entry. |
+| `cocoafun/awesome-academic-skills` | PR | withdrawn | https://github.com/cocoafun/awesome-academic-skills/pull/2 | Closed by the submitter after the target measured 1 star, below the 100-star floor. |
 | `ai4s-research/awesome-ai-for-science` | PR | submitted | https://github.com/ai4s-research/awesome-ai-for-science/pull/86 | One entry in Literature & Knowledge Management. |
 | `modelscope/Awesome-Vibe-Research` | PR | submitted | https://github.com/modelscope/Awesome-Vibe-Research/pull/17 | Includes the dated Chinese topic-scoping result as the practice link. |
 | `MinhaoXiong/awesome-automated-research` | PR | submitted | https://github.com/MinhaoXiong/awesome-automated-research/pull/7 | English and Chinese literature-tool rows. |
-| `O0000-code/awesome-academic-skills` | Issue form packet | prepared | [human submission packet](community-submission-packets/o0000-code-awesome-academic-skills.md) | Human action required: contribution policy requires the recommendation itself to be submitted by a human. |
+| `O0000-code/awesome-academic-skills` | Issue form | skipped | - | 14 stars at review time, below the 100-star floor; its human-only submission policy is therefore no longer relevant. |
 
 ## Agent Skills
 
@@ -37,7 +45,7 @@ This ledger records target-specific discovery work. It separates submissions fro
 | `appcypher/awesome-mcp-servers` | PR branch | prepared | https://github.com/appcypher/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
 | `wong2/awesome-mcp-servers` | PR branch | prepared | https://github.com/wong2/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
 | `TensorBlock/awesome-mcp-servers` | Issue form | submitted | https://github.com/TensorBlock/awesome-mcp-servers/issues/1491 | Intake automation opened review PR [#1492](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492); the target counts once. |
-| `in-fun/mcpbar` | Manifest PR | submitted | https://github.com/in-fun/mcpbar/pull/5 | Manifest pins package `0.2.0`; JSON parse and published `uvx` entrypoint checks passed. |
+| `in-fun/mcpbar` | Manifest PR | withdrawn | https://github.com/in-fun/mcpbar/pull/5 | Closed by the submitter after the target measured 21 stars, below the 100-star floor. |
 
 ## Current Checkpoint
 
@@ -45,8 +53,9 @@ Recorded on 2026-07-31 after the first submission round.
 
 | Metric | Current | Counting note |
 |---|---:|---|
-| Qualified submissions | 8 | Eight independent targets have an open, permitted PR or issue. |
-| Prepared submissions | 3 | One human-only packet and two compare branches; none count as submitted. |
+| Qualified submissions | 6 | Six independent high-authority targets have an open, permitted PR or issue. |
+| Prepared submissions | 2 | Two high-authority compare branches; neither counts as submitted. |
+| Withdrawn submissions | 2 | Two low-authority requests were closed after the quality gate was adopted. |
 | Qualified third-party listings | 0 | Open submissions become listings only after merge or registry publication. |
 
 ## Submission Copy Principles
