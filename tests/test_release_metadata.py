@@ -112,6 +112,7 @@ def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
 
 
 def test_community_growth_docs_track_discovery_instead_of_release_count() -> None:
+    readme = read("README.md")
     growth = read("docs/community-growth.md")
     submissions = read("docs/community-submissions.md")
 
@@ -151,14 +152,24 @@ def test_community_growth_docs_track_discovery_instead_of_release_count() -> Non
         "https://github.com/VoltAgent/awesome-agent-skills/pull/860",
         "https://github.com/punkpeye/awesome-mcp-servers/pull/11253",
         "https://github.com/TensorBlock/awesome-mcp-servers/issues/1491",
+        "https://github.com/TensorBlock/awesome-mcp-servers/pull/1492",
+        "https://tensorblock.co/mcp/servers/github-wp-a-nature-academic-search-24b4493d",
         "https://github.com/in-fun/mcpbar/pull/5",
     ):
         assert required in submissions
 
-    assert "| Qualified submissions | 6 |" in growth
-    assert "| Qualified third-party listings | 0 |" in growth
+    assert "| Qualified submissions | 4 |" in growth
+    assert "| Qualified third-party listings | 1 |" in growth
+    assert "| Qualified external GitHub mentions | 1 |" in growth
+    assert "| GitHub stars | 90 |" in growth
     assert "Skip repositories below 100 stars" in growth
     assert "| Withdrawn submissions | 2 |" in submissions
+    assert "| Declined submissions | 1 |" in submissions
+    assert "| Qualified third-party listings | 1 |" in submissions
+    assert "`VoltAgent/awesome-agent-skills` | PR | declined" in submissions
+    assert "`appcypher/awesome-mcp-servers` | PR branch | skipped" in submissions
+    assert "`TensorBlock/awesome-mcp-servers` | Issue form | accepted" in submissions
+    assert "TensorBlock MCP Server Directory" in readme
 
 
 def test_real_result_examples_are_dated_grounded_and_rendered() -> None:

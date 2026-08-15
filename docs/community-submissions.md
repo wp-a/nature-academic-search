@@ -35,28 +35,31 @@ This ledger records target-specific discovery work. It separates submissions fro
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
-| `VoltAgent/awesome-agent-skills` | PR | submitted | https://github.com/VoltAgent/awesome-agent-skills/pull/860 | Community Skills / Specialized Domains; description kept within 10 words. |
+| `VoltAgent/awesome-agent-skills` | PR | declined | https://github.com/VoltAgent/awesome-agent-skills/pull/860 | Closed by a maintainer on 2026-08-03 without a merge, review, or explanatory comment. |
 
 ## MCP catalogs and registries
 
 | Target | Method | Status | submission_url | Notes |
 |---|---|---|---|---|
 | `punkpeye/awesome-mcp-servers` | PR | submitted | https://github.com/punkpeye/awesome-mcp-servers/pull/11253 | Agent opt-in title used and repository check passed; acceptance still requires a signed-in Glama listing and score badge. |
-| `appcypher/awesome-mcp-servers` | PR branch | prepared | https://github.com/appcypher/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
+| `appcypher/awesome-mcp-servers` | PR branch | skipped | https://github.com/appcypher/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | The upstream repository is archived; the prepared compare branch is not counted as submitted. |
 | `wong2/awesome-mcp-servers` | PR branch | prepared | https://github.com/wong2/awesome-mcp-servers/compare/main...wp-a:add-nature-academic-search | Upstream has Issues disabled and GitHub denied `CreatePullRequest`; the compare branch is not counted as submitted. |
-| `TensorBlock/awesome-mcp-servers` | Issue form | submitted | https://github.com/TensorBlock/awesome-mcp-servers/issues/1491 | Intake automation opened review PR [#1492](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492); the target counts once. |
+| `TensorBlock/awesome-mcp-servers` | Issue form | accepted | https://github.com/TensorBlock/awesome-mcp-servers/issues/1491 | Intake PR [#1492](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492) merged on 2026-08-03; the entry is visible in the default branch and the [public directory profile](https://tensorblock.co/mcp/servers/github-wp-a-nature-academic-search-24b4493d). |
 | `in-fun/mcpbar` | Manifest PR | withdrawn | https://github.com/in-fun/mcpbar/pull/5 | Closed by the submitter after the target measured 21 stars, below the 100-star floor. |
 
 ## Current Checkpoint
 
-Recorded on 2026-07-31 after the first submission round.
+Recorded on 2026-08-15 after checking the public state of every qualified
+submission. The four `submitted` rows remain open; no silent open request is
+counted as accepted.
 
 | Metric | Current | Counting note |
 |---|---:|---|
-| Qualified submissions | 6 | Six independent high-authority targets have an open, permitted PR or issue. |
-| Prepared submissions | 2 | Two high-authority compare branches; neither counts as submitted. |
+| Qualified submissions | 4 | Four independent high-authority targets have an open, permitted PR. |
+| Prepared submissions | 1 | One high-authority compare branch; it does not count as submitted. |
 | Withdrawn submissions | 2 | Two low-authority requests were closed after the quality gate was adopted. |
-| Qualified third-party listings | 0 | Open submissions become listings only after merge or registry publication. |
+| Declined submissions | 1 | One maintainer closed the request without merging it. |
+| Qualified third-party listings | 1 | TensorBlock merged the entry and published its directory profile. |
 
 ## Submission Copy Principles
 

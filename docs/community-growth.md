@@ -19,19 +19,26 @@ The same 14-day traffic window reported 384 unique repository visitors and 171 u
 
 ## Current Checkpoint
 
-Recorded on 2026-07-31 after the first community-submission round.
+Recorded on 2026-08-15 after reviewing every qualified submission against its
+public GitHub state. GitHub traffic referrers could not be refreshed during this
+checkpoint, so that row retains the last verified 14-day window instead of
+presenting an estimate as current data.
 
 | Metric | Current | Evidence |
 |---|---:|---|
-| Qualified submissions | 6 | Open PRs or issues across six independent ecosystem repositories that pass the quality gate |
-| Prepared nominations | 2 | Two high-authority upstream-blocked PR branches; these do not count as submitted |
+| Qualified submissions | 4 | Four open PRs across independent ecosystem repositories that pass the quality gate |
+| Prepared nominations | 1 | One high-authority upstream-blocked PR branch; it does not count as submitted |
 | Withdrawn submissions | 2 | Closed after their target repositories measured below 100 GitHub stars |
-| Qualified third-party listings | 0 | No submitted entry is merged into a target default branch yet |
-| Qualified external GitHub mentions | 0 | Current code search found only owner-controlled repositories and one automated package-index mirror |
-| External unique referrers | 6 known in 14 days | Google 4, `github-cn.com` 1, and `chatgpt.com` 1; GitHub and WPIRONMAN traffic excluded |
-| GitHub stars | 51 | Trailing outcome only |
+| Declined submissions | 1 | VoltAgent closed its PR without merging the entry |
+| Qualified third-party listings | 1 | TensorBlock merged the entry into its default branch and published a directory profile |
+| Qualified external GitHub mentions | 1 | TensorBlock's merged default-branch entry is the first verified independent repository reference |
+| External unique referrers | 6 known in 14 days | Last verified 2026-07-31: Google 4, `github-cn.com` 1, and `chatgpt.com` 1; GitHub and WPIRONMAN traffic excluded |
+| GitHub stars | 90 | Public repository count on 2026-08-15; trailing outcome only |
 
-The next decision is based on accepted high-authority listings and independent references, not on opening more pull requests or publishing another package version.
+The project gained 39 stars from the 51-star baseline while earning its first
+qualified third-party listing. The next decision remains based on accepted
+high-authority listings and independent references, not on opening more pull
+requests or publishing another package version.
 
 ## Target Quality Gate
 

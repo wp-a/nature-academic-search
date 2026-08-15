@@ -19,6 +19,8 @@
 
 <sub>本次真实结果 · 2026-07-31：四个来源成功，PubMed 429 被明确披露；点击查看完整记录与边界。</sub>
 
+第三方收录：[TensorBlock MCP Server Directory](https://tensorblock.co/mcp/servers/github-wp-a-nature-academic-search-24b4493d) · [合并记录](https://github.com/TensorBlock/awesome-mcp-servers/pull/1492)
+
 </div>
 
 ## 直接这样问
