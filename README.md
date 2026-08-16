@@ -133,6 +133,12 @@ bash install.sh researcher@example.com
 `NCBI_API_KEY`、`OPENALEX_API_KEY`、`SEMANTIC_SCHOLAR_API_KEY` 均为可选项。没有 Semantic Scholar
 key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安装文档](docs/installation.md)。
 
+> [!TIP]
+> **推广 · WPIRONMAN AI 中转控制台**
+>
+> 统一管理模型渠道、密钥、额度与调用入口，让模型服务状态更清晰。
+> [进入控制台 →](https://api.wpironman.top)
+
 ## 数据源如何分工
 
 | 来源 | 调用方式 | 最适合做什么 | 边界 |

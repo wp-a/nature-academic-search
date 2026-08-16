@@ -72,6 +72,22 @@ def test_readme_documents_all_supported_install_paths() -> None:
     assert "claude plugin marketplace add wp-a/nature-academic-search" in readme
 
 
+def test_readme_discloses_relay_promotion_after_installation() -> None:
+    readme = read("README.md")
+
+    promotion = "> **推广 · WPIRONMAN AI 中转控制台**"
+    for required in (
+        "> [!TIP]",
+        promotion,
+        "统一管理模型渠道、密钥、额度与调用入口",
+        "[进入控制台 →](https://api.wpironman.top)",
+    ):
+        assert required in readme
+
+    assert readme.index("## 30 秒开始") < readme.index(promotion)
+    assert readme.index(promotion) < readme.index("## 数据源如何分工")
+
+
 def test_readme_presents_the_chinese_research_workflow() -> None:
     readme = read("README.md")
 
