@@ -90,6 +90,22 @@ export OPENALEX_API_KEY=
 export SEMANTIC_SCHOLAR_API_KEY=
 ```
 
+## 可选工作流模型层
+
+本地 workflow runner 不需要模型即可完成检索、核验和导出。若要启用计划或初筛辅助，可配置
+OpenAI-compatible 中转站；密钥只放在运行环境，不要写入 YAML：
+
+```bash
+export ACADEMIC_SEARCH_LLM_BASE_URL=https://api.wpironman.top/v1
+export ACADEMIC_SEARCH_LLM_API_KEY=your-relay-key
+export ACADEMIC_SEARCH_LLM_MODEL=your-model
+export ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http
+```
+
+Responses 使用普通 HTTP；中转站不提供 Responses WebSocket 时无需改用另一个客户端。默认只发送
+标题、摘要、标识符和批准的元数据，全文需要在 workflow 中显式设置
+`privacy.allow_full_text: true`。网关不可用只会跳过模型步骤，不会阻断学术源检索。
+
 Empty values are valid. OpenAlex remains available anonymously. A missing
 Semantic Scholar key causes its credentialed preflight check to be skipped; it
 does not disable the five default publication sources. Never commit real key

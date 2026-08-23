@@ -56,7 +56,12 @@ def verify_record(
     fields: dict[str, dict[str, Any]] = {}
 
     for expected_field, expected_value in expected.items():
-        if expected_field == "entity_type" or expected_value in (None, "", [], {}):
+        if expected_field in {"entity_type", "record_id"} or expected_value in (
+            None,
+            "",
+            [],
+            {},
+        ):
             continue
         if expected_field not in allowed_fields:
             fields[expected_field] = {"status": "uncheckable"}

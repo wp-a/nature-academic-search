@@ -144,6 +144,12 @@ def test_readme_documents_evidence_grade_search_contract() -> None:
         "ranking_score",
         "ranking_reasons",
         "score_version",
+        "workflow",
+        "plan.json",
+        "screening.csv",
+        "allow_full_text",
+        "ACADEMIC_SEARCH_LLM_BASE_URL",
+        "responses_http",
     ):
         assert required in readme
 

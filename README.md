@@ -115,6 +115,46 @@ CrossRef、PubMed、OpenAlex、Europe PMC 或 arXiv 能理解的查询参数，�
 `record_id`、`result_fingerprint` 和排序版本保存完整 JSON。使用 `ranking="none"` 可保留过滤后的
 来源顺序。
 
+## 科研工作流自动化
+
+把一次研究任务保存为 YAML，运行器会在检索前停在审批门，并把每一步写成可审计 artifact：
+
+```yaml
+workflow: literature-review
+question: "生成式 AI 在医学教育中的应用与风险"
+steps: [plan, search, verify, screen, export]
+search:
+  entity_type: publication
+  sources: [crossref, pubmed, arxiv, openalex, europe_pmc]
+  rows: 20
+  filters: {date_from: "2020-01-01", language: zh}
+outputs: [run.json, results.json, verification.json, screening.csv, references.ris, report.md]
+```
+
+```bash
+nature-academic-search workflow run --file review.yml --output artifacts
+nature-academic-search workflow run --file review.yml --output artifacts --approve
+```
+
+首次运行不带 `--approve` 只生成 `plan.json`，不会访问学术源。默认导出只包含 `verified` 记录；
+`mismatch`、`not_found` 和 `manual_needed` 会留在核验 artifact 中。模型筛选失败时仍保留检索、
+核验和导出，并把 screen 标记为 `skipped` / `pending_manual`。
+
+### 可选的 WPIRONMAN 模型层
+
+中转站只是计划或初筛的模型提供方，不是论文来源。配置环境变量后，运行器会使用普通 HTTP；不会
+使用 Responses WebSocket，也不会把 key 写入 manifest、日志或 prompt artifact：
+
+```bash
+export ACADEMIC_SEARCH_LLM_BASE_URL=https://api.wpironman.top/v1
+export ACADEMIC_SEARCH_LLM_API_KEY=你的中转密钥
+export ACADEMIC_SEARCH_LLM_MODEL=你的模型名
+export ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http
+```
+
+默认只发送标题、摘要、标识符和批准的元数据；全文必须在 workflow 的 `privacy.allow_full_text`
+中显式打开。网关不可用或返回坏 JSON 时最多重试一次，随后只跳过模型步骤。
+
 ## 三个可复制的中文场景
 
 ### 开题检索

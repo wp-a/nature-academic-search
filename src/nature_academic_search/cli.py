@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 
@@ -30,6 +31,23 @@ def build_parser() -> argparse.ArgumentParser:
         "install",
         help="Register the package with Codex, Claude Code, or both",
     )
+    workflow_parser = subparsers.add_parser(
+        "workflow",
+        help="Run a local declarative research workflow",
+    )
+    workflow_subparsers = workflow_parser.add_subparsers(dest="workflow_command", required=True)
+    workflow_run = workflow_subparsers.add_parser("run", help="Run a YAML workflow")
+    workflow_run.add_argument("--file", required=True, help="Workflow YAML path")
+    workflow_run.add_argument(
+        "--output",
+        default="workflow-artifacts",
+        help="Artifact directory (default: workflow-artifacts)",
+    )
+    workflow_run.add_argument(
+        "--approve",
+        action="store_true",
+        help="Approve the plan and allow source retrieval",
+    )
     return parser
 
 
@@ -55,5 +73,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .server import main as server_main
 
         server_main()
+        return 0
+    if args.command == "workflow" and args.workflow_command == "run":
+        from .relay import OpenAICompatibleRelay
+        from .workflow import WorkflowRunner, WorkflowSpec
+
+        try:
+            workflow = WorkflowSpec.from_yaml(args.file)
+            result = WorkflowRunner(provider=OpenAICompatibleRelay.from_env()).run(
+                workflow,
+                args.output,
+                approve=args.approve,
+            )
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     return 0

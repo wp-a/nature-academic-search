@@ -45,6 +45,31 @@ LANGUAGE、AUTHOR、PUB_TYPE；arXiv 使用已有的 submittedDate 范围。源�
 不得当作证据质量或引用真实性。`search_run.filters`、`search_run.ranking` 和
 `search_run.source_translation` 应与 `run.json` 一起保存。
 
+## 2.2 声明式科研工作流
+
+需要重复执行计划、检索、核验、筛选和导出时，使用本地 YAML runner：
+
+```yaml
+workflow: literature-review
+question: "生成式 AI 在医学教育中的应用与风险"
+steps: [plan, search, verify, screen, export]
+search:
+  entity_type: publication
+  sources: [crossref, pubmed, arxiv, openalex, europe_pmc]
+  rows: 20
+outputs: [run.json, results.json, verification.json, screening.csv, references.ris, report.md]
+```
+
+`nature-academic-search workflow run --file review.yml --output artifacts` 只生成 `plan.json`；
+加 `--approve` 才会访问学术源。默认导出仅纳入 `verified`，其他状态进入单独 artifact。完整运行
+会保存 workflow run ID、审批边界、source status、模型步骤状态和错误，不保存任何凭据。
+
+WPIRONMAN 通过 OpenAI-compatible 普通 HTTP 作为可选模型层：设置
+`ACADEMIC_SEARCH_LLM_BASE_URL`、`ACADEMIC_SEARCH_LLM_API_KEY`、`ACADEMIC_SEARCH_LLM_MODEL`、
+`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`。它只用于 plan/screen 等辅助步骤，不替代学术源；
+默认仅传标题、摘要、标识符和用户批准的元数据。网关不可用或 JSON 无效时最多重试一次，随后标记
+模型步骤 `skipped`，检索、核验和导出继续。全文只有在 `privacy.allow_full_text: true` 时上传。
+
 ## 3. 选择来源
 
 论文检索省略 `sources` 时默认查询 `crossref`、`pubmed`、`arxiv`、`openalex`、

@@ -70,6 +70,14 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 没有传 `expected` 时，不能把搜索结果自动称为已核验；`mismatch` 和 `manual_needed` 不得
 静默进入已核验引用集合。
 
+需要多步自动化时使用本地 YAML workflow runner，而不是新增 MCP 工具。`plan → search → verify →
+screen → export` 会先生成 `plan.json`，等待用户批准后才检索，并输出 `run.json`、`results.json`、
+`verification.json`、`screening.csv`、`references.ris` 和 `report.md`。默认只导出 `verified`；
+模型不可用时只跳过 screen。WPIRONMAN 是可选的 OpenAI-compatible 模型层，配置
+`ACADEMIC_SEARCH_LLM_BASE_URL`、`ACADEMIC_SEARCH_LLM_API_KEY`、`ACADEMIC_SEARCH_LLM_MODEL` 和
+`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`；key 不得进入日志或 artifact，全文上传必须显式
+设置 `privacy.allow_full_text: true`。
+
 ## 证据规则
 
 - 不编造元数据、摘要、引用次数、标识符、开放获取状态、全文结论或试验结果。

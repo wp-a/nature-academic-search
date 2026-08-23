@@ -27,7 +27,7 @@ def test_module_help_lists_supported_commands() -> None:
     completed = run_module("--help")
 
     assert completed.returncode == 0, completed.stderr
-    for command in ("serve", "preflight", "citation", "install"):
+    for command in ("serve", "preflight", "citation", "install", "workflow"):
         assert command in completed.stdout
 
 
