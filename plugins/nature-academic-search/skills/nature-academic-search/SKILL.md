@@ -53,6 +53,15 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 `sources`/`source_records`、冲突和核验状态。引用次数必须保留 `citation_counts` 与
 `citation_count_source`，不得合成无来源的“总引用数”。
 
+每次成功的 `search_papers` 还返回 `search_run`：其中的 `run_id`、UTC 时间、请求参数、
+去重前后数量和 `result_fingerprint` 用于保存可复现的 `run.json`。每条最终记录带稳定的
+`record_id`；它不是来源标识符的替代品，而是跨次检索比较记录的本地键。
+
+需要核验已有引用时，把题名、作者、年份、期刊或标识符放入 `get_paper_by_id` 的可选
+`expected` 对象。工具会返回字段级 `verified`、`mismatch`、`not_found` 或 `manual_needed`。
+没有传 `expected` 时，不能把搜索结果自动称为已核验；`mismatch` 和 `manual_needed` 不得
+静默进入已核验引用集合。
+
 ## 证据规则
 
 - 不编造元数据、摘要、引用次数、标识符、开放获取状态、全文结论或试验结果。

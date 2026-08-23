@@ -120,6 +120,10 @@ def test_skill_routes_chinese_research_requests_and_reports_verification() -> No
         "not_found",
         "manual_needed",
         "结果契约",
+        "search_run",
+        "record_id",
+        "result_fingerprint",
+        "expected",
         "references/search-workflows.md",
         "references/source-tiers.md",
         "references/citation-files.md",
@@ -148,6 +152,9 @@ def test_skill_documents_seven_source_roles_and_entity_boundary() -> None:
         "errors",
         "citation_counts",
         "实际工具输出",
+        "search_run",
+        "record_id",
+        "result_fingerprint",
     ):
         assert contract in skill
 

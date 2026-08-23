@@ -45,6 +45,10 @@ publication 与 trial 源混用会被拒绝。
 
 保留成功记录，只重试失败来源。不要因为代码中存在适配器，就声称该来源在本次被查询。
 
+每次成功运行还会返回 `search_run`。保存完整 JSON 响应作为 `run.json`，至少保留
+`run_id`、UTC 时间、请求来源、去重前后数量和 `result_fingerprint`。每条最终记录的
+`record_id` 用于跨次运行比较，不替代 DOI、PMID 或来源 URL。
+
 ## 5. 去重与冲突
 
 先按同一 `entity_type` 内的 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT ID
@@ -62,6 +66,10 @@ publication 与 trial 源混用会被拒绝。
 3. 标记 `verified`、`mismatch`、`not_found` 或 `manual_needed`。
 4. 有 DOI 时 `get_citation` 优先使用 CrossRef 格式化；无 DOI 时返回基础引用并标明 `metadata_source`。
 5. NCT 是试验注册，不生成论文引用；其关联 PMID 需作为论文另行解析。
+
+`get_paper_by_id` 可以接收 `expected` 元数据并返回字段级状态。只有 `verified` 记录才能
+默认进入已核验引用集合；`mismatch`、`not_found` 和 `manual_needed` 必须保留在单独的
+待处理清单中。
 
 ## 7. 结果报告
 

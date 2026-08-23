@@ -127,6 +127,22 @@ def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
         assert contract in readme
 
 
+def test_readme_documents_evidence_grade_search_contract() -> None:
+    readme = read("README.md")
+
+    for required in (
+        "search_run",
+        "record_id",
+        "result_fingerprint",
+        "expected",
+        "字段级",
+        "manual_needed",
+        "mismatch",
+        "run.json",
+    ):
+        assert required in readme
+
+
 def test_community_growth_docs_track_discovery_instead_of_release_count() -> None:
     readme = read("README.md")
     growth = read("docs/community-growth.md")

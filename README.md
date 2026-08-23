@@ -49,11 +49,46 @@ raw_result_count: <去重前数量>
 result_count: <唯一记录数量>
 results:
   - title: <题名>
+    record_id: <稳定记录 ID>
     sources: [pubmed, europe_pmc]
     source_records: [<来源记录>]
     citation_counts: {openalex: <来源计数>, semantic_scholar: <来源计数>}
     citation_count_source: openalex
 ```
+
+## 证据级输出
+
+`search_papers` 的返回值不仅是题名列表，还包含可保存的检索运行记录：
+
+```yaml
+search_run:
+  schema_version: "1"
+  run_id: <UUID>
+  started_at: <UTC 时间>
+  completed_at: <UTC 时间>
+  requested_sources: [crossref, pubmed, arxiv, openalex, europe_pmc]
+  raw_result_count: <去重前数量>
+  result_count: <唯一记录数量>
+  result_fingerprint: sha256:<结果指纹>
+```
+
+建议把完整 JSON 响应保存为 `run.json`。`record_id` 让同一条记录可以跨次检索比较；
+`sources`、`source_records` 和 `conflicts` 仍然是来源追踪的依据。
+
+检索到不等于已经核验。对已有引用，调用 `get_paper_by_id` 时传入可选的 `expected`：
+
+```json
+{
+  "title": "待核验题名",
+  "authors": ["第一作者"],
+  "year": 2024,
+  "doi": "10.xxxx/example"
+}
+```
+
+返回会做字段级比较，逐项检查题名、作者、年份、期刊和标识符，并给出 `verified`、`mismatch`、
+`not_found` 或 `manual_needed`。不确定记录必须单独列出，不能为了生成一份漂亮的引用而
+自动补全或静默覆盖冲突。
 
 ## 三个可复制的中文场景
 
