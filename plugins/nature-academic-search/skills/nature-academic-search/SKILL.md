@@ -57,6 +57,14 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 去重前后数量和 `result_fingerprint` 用于保存可复现的 `run.json`。每条最终记录带稳定的
 `record_id`；它不是来源标识符的替代品，而是跨次检索比较记录的本地键。
 
+需要缩小检索范围时，给 `search_papers` 传入统一的 `filters` 对象：`date_from`、`date_to`
+（`YYYY-MM-DD`）、`language`、`author`、`document_type`（字符串或列表）和 `identifiers`。
+系统会为 CrossRef、PubMed、OpenAlex、Europe PMC、arXiv 生成源原生查询；不能由源可靠表达的
+字段由本地严格过滤，未知字段或反向日期直接报错。传入 `ranking="relevance"`，或传入 filters
+后省略 ranking，会启用固定 `score_version` 的本地相关性排序，并在记录中写入
+`ranking_score` / `ranking_reasons`；它只表示检索相关性，不表示证据质量。`ranking="none"`
+保留过滤后的来源顺序。完整的字段翻译与边界见[检索工作流](references/search-workflows.md)。
+
 需要核验已有引用时，把题名、作者、年份、期刊或标识符放入 `get_paper_by_id` 的可选
 `expected` 对象。工具会返回字段级 `verified`、`mismatch`、`not_found` 或 `manual_needed`。
 没有传 `expected` 时，不能把搜索结果自动称为已核验；`mismatch` 和 `manual_needed` 不得

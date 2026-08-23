@@ -139,6 +139,11 @@ def test_readme_documents_evidence_grade_search_contract() -> None:
         "manual_needed",
         "mismatch",
         "run.json",
+        "filters",
+        "ranking",
+        "ranking_score",
+        "ranking_reasons",
+        "score_version",
     ):
         assert required in readme
 

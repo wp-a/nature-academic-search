@@ -17,6 +17,34 @@
 4. 保存人类可读的原查询。PubMed 字段语法不能原样复制给其他来源。
 5. 只在用户要求或范围需要时添加日期、类型和语言过滤。
 
+### 2.1 统一过滤与排序
+
+`search_papers` 接受统一的 `filters` 对象：
+
+```json
+{
+  "date_from": "2022-01-01",
+  "date_to": "2024-12-31",
+  "language": "en",
+  "author": "Jane Doe",
+  "document_type": ["journal-article"],
+  "identifiers": ["10.1000/example"]
+}
+```
+
+系统会把日期、作者、语言和文献类型翻译到各源的原生表达：CrossRef 使用 publication
+date、author 和 type；PubMed 使用 Date/Author/Language/Publication Type 字段；OpenAlex
+使用 publication date、language、author.search 和 type；Europe PMC 使用 FIRST_PDATE、
+LANGUAGE、AUTHOR、PUB_TYPE；arXiv 使用已有的 submittedDate 范围。源不支持或返回字段不足时，
+本地过滤仍会严格执行；缺失必要字段的记录不会假装命中。`identifiers` 始终在合并后按强标识符
+过滤。
+
+传入 `ranking="relevance"` 会使用固定 `score_version` 的本地算法：题名、摘要、主题词的
+权重固定，精确标识符命中优先，最后按 `record_id` 稳定打破平分。传入 filters 而省略 ranking
+默认启用该排序；`ranking="none"` 保留过滤后的来源顺序。`ranking_score` 仅代表检索相关性，
+不得当作证据质量或引用真实性。`search_run.filters`、`search_run.ranking` 和
+`search_run.source_translation` 应与 `run.json` 一起保存。
+
 ## 3. 选择来源
 
 论文检索省略 `sources` 时默认查询 `crossref`、`pubmed`、`arxiv`、`openalex`、

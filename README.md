@@ -90,6 +90,31 @@ search_run:
 `not_found` 或 `manual_needed`。不确定记录必须单独列出，不能为了生成一份漂亮的引用而
 自动补全或静默覆盖冲突。
 
+## 智能发现：过滤与可复现排序
+
+需要缩小范围时，给 `search_papers` 传入统一的 `filters`，不要把一个数据库的字段语法硬套到所有来源：
+
+```json
+{
+  "date_from": "2022-01-01",
+  "date_to": "2024-12-31",
+  "language": "en",
+  "author": "Jane Doe",
+  "document_type": ["journal-article"],
+  "identifiers": ["10.1000/example"]
+}
+```
+
+日期使用 `YYYY-MM-DD`；语言使用 ISO 两位或三位代码。系统会把日期、作者和类型翻译为
+CrossRef、PubMed、OpenAlex、Europe PMC 或 arXiv 能理解的查询参数，并对无法由源可靠表达的
+字段执行本地过滤。未知字段、反向日期范围和空列表会直接报错，不会静默放宽条件。
+
+传入 `ranking="relevance"`，或传入任一 `filters` 后不指定 ranking，会启用固定版本的本地排序。
+每条记录会增加 `ranking_score` 与 `ranking_reasons`，`search_run.ranking` 会记录
+`score_version`。这是检索相关性，不是证据质量、同行评议质量或引用真实性；需要审计时按
+`record_id`、`result_fingerprint` 和排序版本保存完整 JSON。使用 `ranking="none"` 可保留过滤后的
+来源顺序。
+
 ## 三个可复制的中文场景
 
 ### 开题检索
@@ -190,16 +215,19 @@ key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安�
 
 ## 它如何工作
 
-**检索 → 去重 → 核验 → 导出**
+**检索 → 过滤/排序 → 去重 → 核验 → 导出**
+
+不启用智能发现时，兼容的基础流程仍是：**检索 → 去重 → 核验 → 导出**。
 
 1. **定义范围**：记录研究主题、日期、类型、数量、是否接受预印本以及实体类型。
 2. **按库检索**：使用各来源适合的查询，不把 PubMed 字段语法复制到其他 API。
-3. **合并去重**：优先匹配 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT ID；
+3. **过滤排序**：统一 filters 先转为源查询；本地兜底后按固定 score version 排序并记录理由。
+4. **合并去重**：优先匹配 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT ID；
    弱题名匹配只在相同实体类型内进行。
-4. **保留溯源**：每条记录带 `sources` / `source_records`；冲突进入 `conflicts`。
-5. **逐条核验**：对照题名、作者、期刊、年份和标识符，标记 `verified`、`mismatch`、
+5. **保留溯源**：每条记录带 `sources` / `source_records`；冲突进入 `conflicts`。
+6. **逐条核验**：对照题名、作者、期刊、年份和标识符，标记 `verified`、`mismatch`、
    `not_found` 或 `manual_needed`。
-6. **分类交付**：正式论文、预印本、trial 和未解决记录分开；论文可导出 RIS、BibTeX、NBIB 或 ENW。
+7. **分类交付**：正式论文、预印本、trial 和未解决记录分开；论文可导出 RIS、BibTeX、NBIB 或 ENW。
 
 任一来源超时或失败时，其他成功结果仍会保留。`sources_queried`、`sources_succeeded`、
 `sources_skipped` 与 `errors` 明确展示完整状态。
@@ -233,7 +261,7 @@ key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安�
 
 | Tool | 用途 |
 |---|---|
-| `search_papers` | 搜索 publication 或 trial，合并记录并返回来源状态 |
+| `search_papers` | 搜索 publication 或 trial，按统一 filters 过滤、可复现排序、合并记录并返回来源状态 |
 | `get_paper_by_id` | 解析 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar URL 或 NCT ID |
 | `get_citation` | 格式化已解析论文；trial 返回结构化边界错误 |
 | `lookup_mesh` | 查询 PubMed MeSH 描述词 |

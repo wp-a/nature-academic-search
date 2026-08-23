@@ -28,7 +28,15 @@ class CrossRefSource:
     # ------------------------------------------------------------------
 
     def search(
-        self, query: str, rows: int = 5, filter_type: str | None = None
+        self,
+        query: str,
+        rows: int = 5,
+        filter_type: str | None = None,
+        *,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        author: str | None = None,
+        document_type: list[str] | None = None,
     ) -> dict:
         """Search CrossRef works.
 
@@ -41,8 +49,18 @@ class CrossRefSource:
             {"total": int, "results": [unified_result, ...]}
         """
         params: dict = {"query": query, "rows": min(rows, 50)}
-        if filter_type:
-            params["filter"] = f"type:{filter_type}"
+        filter_parts: list[str] = []
+        selected_type = filter_type or (document_type[0] if document_type else None)
+        if selected_type:
+            filter_parts.append(f"type:{selected_type}")
+        if date_from:
+            filter_parts.append(f"from-pub-date:{date_from}")
+        if date_to:
+            filter_parts.append(f"until-pub-date:{date_to}")
+        if filter_parts:
+            params["filter"] = ",".join(filter_parts)
+        if author:
+            params["query.author"] = author
 
         data = self._request("/works", params=params)
         items = data.get("items", [])
@@ -173,6 +191,8 @@ class CrossRefSource:
             "year": self._extract_year(item),
             "doi": item.get("DOI"),
             "journal": (item.get("container-title") or [""])[0],
+            "language": item.get("language") or "",
+            "document_type": item.get("type") or "",
             "source": self.SOURCE_NAME,
             "citation_count": item.get("is-referenced-by-count", 0),
         }

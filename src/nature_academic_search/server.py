@@ -128,6 +128,8 @@ def search_papers(
     type: str | None = None,
     entity_type: str = "publication",
     enrich: list[str] | None = None,
+    filters: dict[str, Any] | None = None,
+    ranking: str | None = None,
 ) -> str:
     """Search publications or trial registrations across supported sources.
 
@@ -138,6 +140,9 @@ def search_papers(
         type: Optional CrossRef work type filter (e.g. "journal-article").
         entity_type: "publication" (default) or "trial".
         enrich: Optional publication enrichers, currently "semantic_scholar".
+        filters: Optional normalized discovery filters for date, language, author,
+            document type, or identifiers.
+        ranking: Optional deterministic ranking mode: "relevance" or "none".
 
     Returns:
         JSON string with total count, merged results, and any per-source errors.
@@ -147,6 +152,11 @@ def search_papers(
 
     if entity_type not in {"publication", "trial"}:
         return _json_error(f"Invalid entity_type: {entity_type}")
+
+    if filters is not None and not isinstance(filters, dict):
+        return _json_error("filters must be an object")
+    if ranking not in {None, "relevance", "none"}:
+        return _json_error("ranking must be 'relevance' or 'none'")
 
     enrich = list(enrich or [])
     valid_sources = {
@@ -185,6 +195,8 @@ def search_papers(
         "rows": rows,
         "entity_type": entity_type,
         "enrich": enrich,
+        "filters": filters,
+        "ranking": ranking,
     })
 
     try:
@@ -199,6 +211,8 @@ def search_papers(
                 adapters=adapters,
                 enrichers=enrich,
                 entity_type=entity_type,
+                filters=filters,
+                ranking=ranking,
             )
         )
     except Exception as exc:

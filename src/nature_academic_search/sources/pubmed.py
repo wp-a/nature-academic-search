@@ -109,6 +109,18 @@ def _parse_article(article: ET.Element) -> dict[str, Any]:
                 abstract_parts.append(content)
     abstract = " ".join(abstract_parts)
 
+    language_el = art.find("Language")
+    language = (
+        language_el.text.strip().casefold()
+        if language_el is not None and language_el.text
+        else ""
+    )
+    publication_types = [
+        text.strip()
+        for text in art.findall("PublicationTypeList/PublicationType")
+        if text.text
+    ]
+
     # Journal
     journal_el = art.find("Journal")
     journal = ""
@@ -153,6 +165,8 @@ def _parse_article(article: ET.Element) -> dict[str, Any]:
         "doi": doi,
         "journal": journal,
         "abstract": abstract,
+        "language": language,
+        "publication_type": "; ".join(publication_types),
         "source": SOURCE_NAME,
     }
 

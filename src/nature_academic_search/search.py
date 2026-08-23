@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from .discovery import apply_post_filters, normalize_filters, rank_records, translate_filters
 from .provenance import result_fingerprint, stable_record_id
 from .sources.registry import (
     DEFAULT_PUBLICATION_SOURCES,
@@ -71,6 +72,8 @@ async def search_all(
     adapters: Mapping[str, Any] | None = None,
     enrichers: Sequence[str] | None = None,
     entity_type: str = "publication",
+    filters: Mapping[str, Any] | None = None,
+    ranking: str | None = None,
 ) -> dict[str, Any]:
     started_at = _utc_timestamp()
     run_id = str(uuid4())
@@ -90,6 +93,10 @@ async def search_all(
             f"Sources are incompatible with entity_type={entity_type}: {incompatible}"
         )
     selected_enrichers = list(enrichers or [])
+    normalized_filters = normalize_filters(filters)
+    if ranking is not None and ranking not in {"relevance", "none"}:
+        raise ValueError("ranking must be 'relevance' or 'none'")
+    discovery_enabled = bool(normalized_filters) or ranking is not None
     if entity_type != "publication" and selected_enrichers:
         raise ValueError("Trial records do not support publication enrichment")
     needed_sources = list(dict.fromkeys([*selected_sources, *selected_enrichers]))
@@ -106,6 +113,10 @@ async def search_all(
                 query,
                 rows,
                 filter_type,
+                translate_filters(source, normalized_filters)
+                if discovery_enabled
+                else None,
+                discovery_enabled,
             )
         )
         for source in selected_sources
@@ -139,8 +150,15 @@ async def search_all(
     )
     results = enrichment["results"]
     errors.extend(enrichment["errors"])
+    filtered_out_count = 0
+    if discovery_enabled and normalized_filters:
+        before_filter_count = len(results)
+        results = apply_post_filters(results, normalized_filters)
+        filtered_out_count = before_filter_count - len(results)
     for record in results:
         record["record_id"] = stable_record_id(record)
+    ranking_mode = ranking or ("relevance" if normalized_filters else "none")
+    results, ranking_metadata = rank_records(results, query, mode=ranking_mode)
     queried = list(
         dict.fromkeys([*selected_sources, *enrichment["sources_queried"]])
     )
@@ -160,6 +178,15 @@ async def search_all(
         "rows": rows,
         "raw_result_count": len(raw_records),
         "result_count": len(results),
+        "filtered_out_count": filtered_out_count,
+        "filters": normalized_filters,
+        "ranking": ranking_metadata,
+        "source_translation": {
+            source: translate_filters(source, normalized_filters)
+            for source in selected_sources
+        }
+        if discovery_enabled
+        else {},
         "result_fingerprint": result_fingerprint(
             [str(record["record_id"]) for record in results]
         ),
@@ -182,6 +209,7 @@ async def search_all(
         "source_meta": source_meta,
         "raw_result_count": len(raw_records),
         "result_count": len(results),
+        "filtered_out_count": filtered_out_count,
         "results": results,
         "errors": errors or None,
         "search_run": search_run,
@@ -256,14 +284,27 @@ def _search_one(
     query: str,
     rows: int,
     filter_type: str | None,
+    translated: Mapping[str, Any] | None = None,
+    discovery_enabled: bool = False,
 ) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {}
+    query_text = query
+    if translated:
+        kwargs.update(translated.get("kwargs") or {})
+        suffix = str(translated.get("query") or "").strip()
+        if suffix:
+            query_text = f"({query}) AND {suffix}"
     if (
         filter_type
         and "type_filter" in source_capabilities(source)
         and source_type_filter_dialect(source) == "crossref"
+        and (
+            not discovery_enabled
+            or "document_type" not in (translated.get("kwargs") if translated else {})
+        )
     ):
-        return adapter.search(query, rows=rows, filter_type=filter_type)
-    return adapter.search(query, rows=rows)
+        kwargs["filter_type"] = filter_type
+    return adapter.search(query_text, rows=rows, **kwargs)
 
 
 def _prepare_record(raw_record: Mapping[str, Any]) -> dict[str, Any]:

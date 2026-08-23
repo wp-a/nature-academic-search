@@ -41,6 +41,11 @@ class OpenAlexSource:
         rows: int = 5,
         *,
         filter_type: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        language: str | None = None,
+        author: str | None = None,
+        document_type: list[str] | None = None,
     ) -> dict[str, Any]:
         if not query or not query.strip():
             raise DataSourceError(SOURCE_NAME, "Empty search query")
@@ -51,8 +56,21 @@ class OpenAlexSource:
             "per_page": max(1, min(rows, config.max_rows, 100)),
             "select": SELECT_FIELDS,
         }
+        filter_parts: list[str] = []
         if filter_type:
-            params["filter"] = f"type:{filter_type}"
+            filter_parts.append(f"type:{filter_type}")
+        if date_from:
+            filter_parts.append(f"from_publication_date:{date_from}")
+        if date_to:
+            filter_parts.append(f"to_publication_date:{date_to}")
+        if language:
+            filter_parts.append(f"language:{language}")
+        if author:
+            filter_parts.append(f"author.search:{author}")
+        if document_type:
+            filter_parts.append("type:" + "|".join(document_type))
+        if filter_parts:
+            params["filter"] = ",".join(filter_parts)
         if config.openalex_api_key:
             params["api_key"] = config.openalex_api_key
 
@@ -141,6 +159,7 @@ def _normalize_work(work: dict[str, Any]) -> dict[str, Any]:
         "pmcid": _identifier_digits(str(ids.get("pmcid") or ""), "pmc"),
         "openalex_id": openalex_id,
         "publication_type": work.get("type"),
+        "language": str(work.get("language") or "").casefold(),
         "citation_count": cited_by_count,
         "citation_count_source": SOURCE_NAME,
         "citation_counts": {SOURCE_NAME: cited_by_count},

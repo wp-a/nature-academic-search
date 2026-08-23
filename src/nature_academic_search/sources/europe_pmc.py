@@ -25,13 +25,33 @@ class EuropePmcSource:
         rows: int = 5,
         *,
         filter_type: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        language: str | None = None,
+        author: str | None = None,
+        document_type: list[str] | None = None,
     ) -> dict[str, Any]:
         if not query or not query.strip():
             raise DataSourceError(SOURCE_NAME, "Empty search query")
         config = get_config()
         effective_query = query.strip()
-        if filter_type:
-            effective_query = f"({effective_query}) AND PUB_TYPE:{filter_type}"
+        selected_types = document_type or ([filter_type] if filter_type else [])
+        has_filters = bool(selected_types or date_from or date_to or language or author)
+        query_parts = [f"({effective_query})"] if has_filters else []
+        if selected_types:
+            query_parts.append(
+                "(" + " OR ".join(f"PUB_TYPE:{value}" for value in selected_types) + ")"
+            )
+        if date_from or date_to:
+            start = date_from or "0000-01-01"
+            end = date_to or "3000-12-31"
+            query_parts.append(f"FIRST_PDATE:[{start} TO {end}]")
+        if language:
+            query_parts.append(f"LANGUAGE:{language}")
+        if author:
+            query_parts.append(f'AUTHOR:"{author}"')
+        if query_parts:
+            effective_query = " AND ".join(query_parts)
         params = {
             "query": effective_query,
             "pageSize": max(1, min(rows, config.max_rows, 1_000)),
@@ -121,6 +141,7 @@ def _normalize_result(item: dict[str, Any]) -> dict[str, Any]:
         "pmid": pmid,
         "pmcid": pmcid,
         "publication_type": publication_type,
+        "language": str(item.get("language") or "").casefold(),
         "is_preprint": is_preprint,
         "is_open_access": is_open_access,
         "fulltext_url": (

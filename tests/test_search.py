@@ -238,6 +238,92 @@ def test_search_all_record_ids_and_fingerprint_are_repeatable() -> None:
     ]
 
 
+def test_search_all_applies_filters_translates_source_kwargs_and_ranks_results() -> None:
+    adapters = {
+        "crossref": FakeSource(
+            {
+                "total": 2,
+                "results": [
+                    {
+                        "title": "Medicine",
+                        "abstract": "AI safety in medicine",
+                        "year": 2024,
+                        "language": "en",
+                        "authors": ["Jane Doe"],
+                    },
+                    {
+                        "title": "AI safety in medicine",
+                        "abstract": "A study",
+                        "year": 2024,
+                        "language": "fr",
+                        "authors": ["Jane Doe"],
+                    },
+                ],
+            },
+            expected_query="AI safety",
+        )
+    }
+
+    result = asyncio.run(
+        search_all(
+            "AI safety",
+            ["crossref"],
+            rows=5,
+            adapters=adapters,
+            filters={
+                "date_from": "2024-01-01",
+                "language": "en",
+                "author": "Jane Doe",
+            },
+        )
+    )
+
+    assert result["result_count"] == 1
+    assert result["results"][0]["title"] == "Medicine"
+    assert adapters["crossref"].calls[0][2] == {
+        "date_from": "2024-01-01",
+        "author": "Jane Doe",
+    }
+    assert result["search_run"]["filters"] == {
+        "date_from": "2024-01-01",
+        "language": "en",
+        "author": "Jane Doe",
+    }
+    assert result["search_run"]["ranking"] == {
+        "mode": "relevance",
+        "score_version": "1",
+    }
+
+
+def test_search_all_ranking_none_keeps_filtered_source_order() -> None:
+    adapters = {
+        "crossref": FakeSource(
+            {
+                "total": 2,
+                "results": [
+                    {"title": "First", "year": 2024},
+                    {"title": "Second", "year": 2024},
+                ],
+            },
+            expected_query="query",
+        )
+    }
+
+    result = asyncio.run(
+        search_all(
+            "query",
+            ["crossref"],
+            rows=5,
+            adapters=adapters,
+            ranking="none",
+        )
+    )
+
+    assert [record["title"] for record in result["results"]] == ["First", "Second"]
+    assert "ranking_score" not in result["results"][0]
+    assert result["search_run"]["ranking"]["mode"] == "none"
+
+
 def test_crossref_work_type_is_not_broadcast_to_other_filter_dialects() -> None:
     source_names = ["crossref", "openalex", "europe_pmc"]
     adapters = {

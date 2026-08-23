@@ -33,7 +33,16 @@ def test_mcp_exposes_exactly_four_backward_compatible_tools() -> None:
     }
 
     search_tool = next(tool for tool in tools if tool.name == "search_papers")
-    assert {"query", "sources", "rows", "type", "entity_type", "enrich"} <= set(
+    assert {
+        "query",
+        "sources",
+        "rows",
+        "type",
+        "entity_type",
+        "enrich",
+        "filters",
+        "ranking",
+    } <= set(
         search_tool.inputSchema["properties"]
     )
 
@@ -249,6 +258,35 @@ def test_trial_search_and_semantic_scholar_enrichment_are_forwarded() -> None:
         )
 
     assert search_all.await_args.args[1] == ["semantic_scholar"]
+
+
+def test_discovery_filters_and_ranking_are_forwarded() -> None:
+    server = load_server()
+    expected = {"entity_type": "publication", "results": [], "errors": None}
+    filters = {"date_from": "2024-01-01", "language": "en"}
+
+    with patch.object(server, "search_all", new=AsyncMock(return_value=expected)) as search_all:
+        result = json.loads(
+            server.search_papers(
+                "AI",
+                filters=filters,
+                ranking="none",
+            )
+        )
+
+    assert result == expected
+    assert search_all.await_args.kwargs["filters"] == filters
+    assert search_all.await_args.kwargs["ranking"] == "none"
+
+
+def test_discovery_filter_shape_is_rejected_before_search() -> None:
+    server = load_server()
+
+    with patch.object(server, "search_all") as search_all:
+        result = json.loads(server.search_papers("AI", filters=["bad"]))
+
+    assert result == {"error": "filters must be an object"}
+    search_all.assert_not_called()
 
 
 def test_invalid_entity_source_combination_is_rejected_before_search() -> None:
