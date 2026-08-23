@@ -111,7 +111,11 @@ def _authors_match(expected: Any, actual: Any) -> bool:
 
 
 def _author_names(value: Any) -> list[str]:
-    values = value if isinstance(value, Sequence) and not isinstance(value, (str, bytes)) else [value]
+    values = (
+        value
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes))
+        else [value]
+    )
     names: list[str] = []
     for item in values:
         if isinstance(item, Mapping):
