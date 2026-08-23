@@ -5,8 +5,11 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
+from .provenance import result_fingerprint, stable_record_id
 from .sources.registry import (
     DEFAULT_PUBLICATION_SOURCES,
     SOURCE_ENTITY_TYPES,
@@ -69,6 +72,8 @@ async def search_all(
     enrichers: Sequence[str] | None = None,
     entity_type: str = "publication",
 ) -> dict[str, Any]:
+    started_at = _utc_timestamp()
+    run_id = str(uuid4())
     if entity_type not in {"publication", "trial"}:
         raise ValueError(f"Unsupported entity_type: {entity_type}")
     defaults = DEFAULT_PUBLICATION_SOURCES if entity_type == "publication" else TRIAL_SOURCES
@@ -134,12 +139,37 @@ async def search_all(
     )
     results = enrichment["results"]
     errors.extend(enrichment["errors"])
+    for record in results:
+        record["record_id"] = stable_record_id(record)
     queried = list(
         dict.fromkeys([*selected_sources, *enrichment["sources_queried"]])
     )
     succeeded = list(
         dict.fromkeys([*succeeded, *enrichment["sources_succeeded"]])
     )
+    completed_at = _utc_timestamp()
+    search_run = {
+        "schema_version": "1",
+        "run_id": run_id,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "query": query,
+        "entity_type": entity_type,
+        "requested_sources": selected_sources,
+        "enrichers": selected_enrichers,
+        "rows": rows,
+        "raw_result_count": len(raw_records),
+        "result_count": len(results),
+        "result_fingerprint": result_fingerprint(
+            [str(record["record_id"]) for record in results]
+        ),
+        "source_status": {
+            "queried": queried,
+            "succeeded": succeeded,
+            "skipped": enrichment["skipped"],
+            "failed": list(dict.fromkeys(error["source"] for error in errors)),
+        },
+    }
     return {
         "total": total,
         "entity_type": entity_type,
@@ -154,6 +184,7 @@ async def search_all(
         "result_count": len(results),
         "results": results,
         "errors": errors or None,
+        "search_run": search_run,
     }
 
 
@@ -409,6 +440,10 @@ def _source_error(source: str, error: BaseException) -> dict[str, Any]:
     if status is not None:
         payload["status"] = status
     return payload
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _strong_identifier(record: Mapping[str, Any]) -> str | None:

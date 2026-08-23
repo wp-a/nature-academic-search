@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -147,6 +149,93 @@ def test_search_all_uses_five_default_publication_sources() -> None:
     assert result["sources_skipped"] == []
     assert result["errors"] is None
     assert all(adapter.calls for adapter in adapters.values())
+
+
+def test_search_all_adds_stable_record_ids_and_run_manifest() -> None:
+    adapters = {
+        "crossref": FakeSource(
+            {
+                "total": 1,
+                "results": [
+                    {
+                        "title": "Shared",
+                        "year": 2025,
+                        "doi": "https://doi.org/10.1/SHARED",
+                        "source": "crossref",
+                    }
+                ],
+            }
+        ),
+        "pubmed": FakeSource(
+            {
+                "total": 1,
+                "results": [
+                    {
+                        "title": "Shared",
+                        "year": 2025,
+                        "doi": "10.1/shared",
+                        "source": "pubmed",
+                    }
+                ],
+            }
+        ),
+        "semantic_scholar": FakeEnricher(
+            {"DOI:10.1/shared": RuntimeError("rate limited")}
+        ),
+    }
+
+    result = asyncio.run(
+        search_all(
+            "prime editing",
+            ["crossref", "pubmed"],
+            rows=5,
+            adapters=adapters,
+            enrichers=["semantic_scholar"],
+        )
+    )
+
+    assert result["results"][0]["record_id"] == "publication:doi:10.1/shared"
+    run = result["search_run"]
+    assert run["schema_version"] == "1"
+    assert run["query"] == "prime editing"
+    assert run["entity_type"] == "publication"
+    assert run["requested_sources"] == ["crossref", "pubmed"]
+    assert run["enrichers"] == ["semantic_scholar"]
+    assert run["raw_result_count"] == 2
+    assert run["result_count"] == 1
+    assert run["result_fingerprint"].startswith("sha256:")
+    datetime.fromisoformat(run["started_at"].replace("Z", "+00:00"))
+    datetime.fromisoformat(run["completed_at"].replace("Z", "+00:00"))
+    assert "fake-secret" not in json.dumps(run)
+    assert result["sources_queried"] == ["crossref", "pubmed", "semantic_scholar"]
+    assert result["sources_succeeded"] == ["crossref", "pubmed"]
+    assert result["sources_skipped"] == []
+    assert result["errors"][0]["source"] == "semantic_scholar"
+    assert run["source_status"]["failed"] == ["semantic_scholar"]
+
+
+def test_search_all_record_ids_and_fingerprint_are_repeatable() -> None:
+    def run_once() -> dict:
+        adapters = {
+            "crossref": FakeSource(
+                {
+                    "total": 1,
+                    "results": [{"title": "Repeatable", "year": 2024}],
+                },
+                expected_query="repeatable",
+            )
+        }
+        return asyncio.run(
+            search_all("repeatable", ["crossref"], rows=5, adapters=adapters)
+        )
+
+    first = run_once()
+    second = run_once()
+
+    assert first["results"][0]["record_id"] == second["results"][0]["record_id"]
+    assert first["search_run"]["result_fingerprint"] == second["search_run"][
+        "result_fingerprint"
+    ]
 
 
 def test_crossref_work_type_is_not_broadcast_to_other_filter_dialects() -> None:
