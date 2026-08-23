@@ -48,6 +48,61 @@ def test_empty_identifier_is_rejected_before_source_call() -> None:
     get_by_doi.assert_not_called()
 
 
+def test_get_paper_by_id_can_attach_field_level_verification() -> None:
+    server = load_server()
+    actual = {
+        "entity_type": "publication",
+        "title": "Resolved",
+        "year": 2024,
+        "doi": "10.1000/example",
+    }
+
+    with patch.object(server._crossref, "get_by_doi", return_value=actual):
+        result = json.loads(
+            server.get_paper_by_id(
+                "10.1000/example",
+                expected={
+                    "title": "Resolved",
+                    "year": "2024",
+                    "doi": "https://doi.org/10.1000/EXAMPLE",
+                },
+            )
+        )
+
+    assert result["title"] == "Resolved"
+    assert result["verification"]["status"] == "verified"
+    assert result["verification"]["fields"]["doi"]["status"] == "match"
+
+
+def test_get_paper_by_id_rejects_malformed_expected_metadata() -> None:
+    server = load_server()
+
+    result = json.loads(server.get_paper_by_id("10.1000/example", expected=["bad"]))
+
+    assert result == {"error": "Expected metadata must be an object"}
+
+
+def test_trial_verification_does_not_compare_paper_only_fields() -> None:
+    server = load_server()
+    actual = {
+        "entity_type": "trial",
+        "nct_id": "NCT01234567",
+        "title": "A Trial",
+        "overall_status": "RECRUITING",
+    }
+
+    with patch.object(server._clinicaltrials, "get_by_id", return_value=actual):
+        result = json.loads(
+            server.get_paper_by_id(
+                "NCT01234567",
+                expected={"title": "A Trial", "status": "RECRUITING"},
+            )
+        )
+
+    assert result["verification"]["status"] == "verified"
+    assert "journal" not in result["verification"]["fields"]
+
+
 def test_invalid_search_source_is_rejected_before_search() -> None:
     server = load_server()
 

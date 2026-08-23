@@ -25,6 +25,7 @@ from .sources.registry import (
     build_adapters,
     source_capabilities,
 )
+from .verification import verify_record
 
 mcp = FastMCP("academic-search")
 logger = setup_logging()
@@ -208,7 +209,11 @@ def search_papers(
 
 
 @mcp.tool()
-def get_paper_by_id(id: str, id_type: str = "auto") -> str:
+def get_paper_by_id(
+    id: str,
+    id_type: str = "auto",
+    expected: dict[str, Any] | None = None,
+) -> str:
     """Get publication or trial details by a supported identifier.
 
     Args:
@@ -218,12 +223,16 @@ def get_paper_by_id(id: str, id_type: str = "auto") -> str:
             - YYMM.NNNNN format -> arXiv ID (arXiv)
             - PMC..., W..., NCT..., and supported source URLs
         id_type: Force a supported identifier type, or use "auto".
+        expected: Optional citation or trial metadata to compare field by field
+            after the identifier lookup.
 
     Returns:
         JSON string with detailed paper metadata.
     """
     if not id or not id.strip():
         return _json_error("Empty identifier")
+    if expected is not None and not isinstance(expected, dict):
+        return _json_error("Expected metadata must be an object")
 
     try:
         resolved_type = _resolve_id_type(id, id_type)
@@ -238,8 +247,18 @@ def get_paper_by_id(id: str, id_type: str = "auto") -> str:
 
     try:
         result = _lookup_record(id.strip(), resolved_type)
+        if expected is not None:
+            result = dict(result)
+            result["verification"] = verify_record(expected, result)
     except DataSourceError as exc:
         logger.error("get_paper_by_id failed: %s", exc)
+        if expected is not None and "not found" in str(exc).casefold():
+            return _json_ok(
+                {
+                    "id": id,
+                    "verification": verify_record(expected, None),
+                }
+            )
         return _json_error(str(exc), source=exc.source)
     except Exception as exc:
         logger.exception("get_paper_by_id failed unexpectedly")
