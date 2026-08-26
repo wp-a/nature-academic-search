@@ -338,8 +338,8 @@ nature-academic-search workflow run --file review.yml --output artifacts --appro
 - trial、preprint 和正式论文分开处理，不能只凭题名合并。
 - 正式稿件提交前，仍需核对出版社页面、原文和期刊引用要求。
 
-> `lookup_mesh` 的 ESummary 解析修复位于当前 `main`。PyPI `0.2.0` 与插件固定版本尚未包含该修复；
-> 需要复现 MeSH 真实结果时，请从当前源码安装：
+> `lookup_mesh` 的 ESummary 解析修复已包含在 PyPI `0.3.0` 与插件固定版本中。如果你的客户端仍显示旧版本，
+> 请更新插件或从当前源码安装：
 >
 > ```bash
 > git clone https://github.com/wp-a/nature-academic-search.git

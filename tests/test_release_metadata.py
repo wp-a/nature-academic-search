@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_VERSION = "0.2.0"
+RELEASE_VERSION = "0.3.0"
 DISPLAY_BRAND = "Academic Paper Search"
 TECHNICAL_ID = "nature-academic-search"
 
@@ -300,7 +300,9 @@ def test_readme_leads_to_three_copyable_real_result_cases() -> None:
         "2026-07-31",
         "git clone https://github.com/wp-a/nature-academic-search.git",
         "bash install.sh --client both --email researcher@example.com",
-        "PyPI `0.2.0` 与插件固定版本尚未包含该修复",
+        "PyPI `0.3.0`",
+        "插件固定版本中",
+        "ESummary 解析修复已包含在",
     ):
         assert required in readme
 
@@ -337,8 +339,8 @@ def test_mesh_example_discloses_current_main_install_boundary() -> None:
         assert "当前 `main`" in document or "current `main`" in document
         assert "git clone https://github.com/wp-a/nature-academic-search.git" in document
         assert "bash install.sh --client both --email researcher@example.com" in document
-        assert "PyPI `0.2.0`" in document
-        assert "尚未包含" in document or "not present" in document
+        assert "PyPI `0.3.0`" in document
+        assert "已包含" in document or "included" in document
 
 
 def test_ci_covers_supported_python_and_legacy_contract() -> None:

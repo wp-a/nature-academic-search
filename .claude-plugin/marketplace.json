@@ -5,12 +5,12 @@
   },
   "metadata": {
     "description": "Academic research skills and MCP tools maintained by wp-a.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "nature-academic-search",
-      "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov, with optional WPIRONMAN AI relay model access at https://api.wpironman.top.",
+      "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov, with bounded citation graphs, auditable research workflows, and optional WPIRONMAN AI relay model access at https://api.wpironman.top.",
       "source": "./plugins/nature-academic-search",
       "strict": true
     }

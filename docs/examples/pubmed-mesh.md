@@ -1,10 +1,10 @@
 # PubMed / MeSH：先核对主题词，再组合检索式
 
 **实测日期：** 2026-07-31（Asia/Shanghai）  
-**代码状态：** 2026-07-31 当前 `main`（包含 MeSH ESummary 解析修复，尚未作为新 PyPI 版本发布）
+**代码状态：** 2026-07-31 当前 `main`（包含 MeSH ESummary 解析修复；该修复随 `0.3.0` 发布）
 **查询词：** `Artificial Intelligence`、`Education, Medical`
 
-PyPI `0.2.0` 与插件固定版本尚未包含这项修复。复现实测前从当前源码安装：
+PyPI `0.3.0` 已包含这项修复。复现实测或测试未发布改动时，可以从当前源码安装：
 
 ```bash
 git clone https://github.com/wp-a/nature-academic-search.git

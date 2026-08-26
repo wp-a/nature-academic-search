@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nature-academic-search"
-version = "0.2.0"
-description = "Academic Paper Search for verified multi-source literature and trial workflows"
+version = "0.3.0"
+description = "Academic Paper Search with verified multi-source literature, citation graphs, and trial workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "wp-a" }]
@@ -48,7 +48,7 @@ test = [
   "pytest>=8,<10",
   "ruff>=0.12,<1",
   "tomli>=2,<3; python_version < '3.11'",
-  "twine>=6,<7",
+  "twine>=7,<8",
 ]
 
 [project.scripts]

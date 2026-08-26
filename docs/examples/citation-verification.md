@@ -1,7 +1,7 @@
 # AI 幻觉引用核验：让 DOI 回到真实论文
 
 **实测日期：** 2026-07-31（Asia/Shanghai）  
-**工具版本：** Academic Paper Search 0.2.0  
+**工具版本：** Academic Paper Search 0.2.0（历史实测记录）
 **核验标识符：** `10.1038/nature14539`
 
 ## 待核验声称
@@ -43,4 +43,3 @@ not_found 或 manual_needed，并解释冲突；不要用搜索结果自动补�
 ```
 
 ![2026-07-31 DOI 与题名冲突真实核验结果](../assets/academic-search-citation-verification.png)
-

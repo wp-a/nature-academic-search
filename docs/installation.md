@@ -33,8 +33,8 @@ nature-academic-search install \
 ## Install from this repository
 
 Use the current `main` source when testing changes that have not been released to
-PyPI. For example, the 2026-07-31 MeSH ESummary parsing fix is not present in
-PyPI `0.2.0` or the plugin version pinned to that package:
+PyPI. The 2026-07-31 MeSH ESummary parsing fix is included in PyPI `0.3.0`; use the
+source checkout only when testing unreleased changes:
 
 ```bash
 git clone https://github.com/wp-a/nature-academic-search.git

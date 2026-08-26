@@ -1,3 +1,3 @@
 """Verified multi-source publication and trial search workflows."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

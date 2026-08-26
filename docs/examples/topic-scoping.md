@@ -1,7 +1,7 @@
 # 开题检索：大语言模型与医学教育
 
 **实测日期：** 2026-07-31（Asia/Shanghai）  
-**工具版本：** Academic Paper Search 0.2.0  
+**工具版本：** Academic Paper Search 0.2.0（历史实测记录）
 **查询：** `large language models medical education`  
 **每源请求数量：** 3
 
@@ -41,4 +41,3 @@ These are discovery candidates, not an inclusion set. The query had no date, stu
 ```
 
 ![2026-07-31 多源开题检索真实结果](../assets/academic-search-topic-scoping.png)
-

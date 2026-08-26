@@ -24,7 +24,7 @@ def test_package_exposes_release_version() -> None:
     finally:
         sys.path.pop(0)
 
-    assert package.__version__ == "0.2.0"
+    assert package.__version__ == "0.3.0"
 
 
 def test_project_declares_supported_python_and_mcp_versions() -> None:
