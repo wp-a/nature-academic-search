@@ -9,6 +9,8 @@
 
 安装标识仍为 `nature-academic-search`，现有命令和配置无需迁移。
 
+<sub>中文优先 · Codex + Claude Code 双兼容 · 五个默认论文源 · 可审计输出 · 有界引文图谱</sub>
+
 [![CI](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml/badge.svg)](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![Python](https://img.shields.io/pypi/pyversions/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![License](https://img.shields.io/github/license/wp-a/nature-academic-search.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/wp-a/nature-academic-search?style=social)](https://github.com/wp-a/nature-academic-search/stargazers)
 
 > **推荐配套服务 · [WPIRONMAN AI 中转](https://api.wpironman.top)**
@@ -95,6 +97,27 @@ bash install.sh researcher@example.com
 下面每个场景都可以直接复制到 Codex 或 Claude Code。前三个组成原来的“三个可复制的中文场景”，
 并使用仓库中的真实结果截图；截图会标注 2026-07-31 的日期、版本和失败来源，不能被解读为所有数据库都成功。
 
+### 三个真实结果入口
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="docs/examples/topic-scoping.md"><img src="docs/assets/academic-search-topic-scoping.png" width="300" alt="多源开题检索真实结果"></a><br>
+      <sub><strong>开题检索</strong><br>多源发现与失败披露</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/examples/citation-verification.md"><img src="docs/assets/academic-search-citation-verification.png" width="300" alt="DOI 与题名冲突真实核验结果"></a><br>
+      <sub><strong>引用核验</strong><br>DOI 与元数据冲突</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="docs/examples/pubmed-mesh.md"><img src="docs/assets/academic-search-pubmed-mesh.png" width="300" alt="PubMed MeSH 真实查询结果"></a><br>
+      <sub><strong>PubMed / MeSH</strong><br>主题词与检索式</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>真实结果记录于 2026-07-31；每个案例都保留查询范围、工具版本和来源边界。</sub>
+
 ### 1. 开题检索：先扩大，再收窄
 
 ```text
@@ -105,12 +128,6 @@ bash install.sh researcher@example.com
 ```
 
 预期得到：查询范围、去重前后数量、稳定 `record_id`、逐源状态和下一步核验清单。
-
-<p align="center">
-  <a href="docs/examples/topic-scoping.md">
-    <img src="docs/assets/academic-search-topic-scoping.png" width="900" alt="多源开题检索真实结果">
-  </a>
-</p>
 
 本次真实结果与完整记录：[开题检索案例](docs/examples/topic-scoping.md)。
 
@@ -126,12 +143,6 @@ bash install.sh researcher@example.com
 
 预期得到：字段级比较、冲突原因、原始来源 URL，以及需要人工确认的项目。
 
-<p align="center">
-  <a href="docs/examples/citation-verification.md">
-    <img src="docs/assets/academic-search-citation-verification.png" width="900" alt="DOI 与题名冲突真实核验结果">
-  </a>
-</p>
-
 完整记录：[AI 幻觉引用核验案例](docs/examples/citation-verification.md)。
 
 ### 3. PubMed / MeSH 检索：先核词，再写检索式
@@ -143,12 +154,6 @@ bash install.sh researcher@example.com
 ```
 
 预期得到：规范主题词、MeSH ID、可审计的起始检索式，以及不能由工具替代的人工扩展项。
-
-<p align="center">
-  <a href="docs/examples/pubmed-mesh.md">
-    <img src="docs/assets/academic-search-pubmed-mesh.png" width="900" alt="PubMed MeSH 真实查询结果">
-  </a>
-</p>
 
 完整记录：[PubMed / MeSH 案例](docs/examples/pubmed-mesh.md)。
 
@@ -257,6 +262,11 @@ Markdown；中等规模适合生成可拖拽 HTML；更大的网络可以导出�
 
 WPIRONMAN 适合把 workflow 的研究计划、初筛规则或摘要级分类交给 OpenAI-compatible 模型；论文元数据和引用关系仍由本项目直连学术源。中转不提供 Crossref、PubMed、OpenAlex、Europe PMC 或 Semantic Scholar 的数据库覆盖，也不会让 DOI 自动变正确。
 
+| 适合交给中转 | 不应交给中转 |
+|---|---|
+| 整理研究问题、生成 workflow plan、按已批准规则做摘要级初筛 | 判断 DOI 是否真实、补齐缺失引用、替代学术数据库、证明某篇论文支持某个结论 |
+| 在允许的元数据范围内做结构化分类 | 上传全文或敏感材料，除非显式设置 `privacy.allow_full_text: true` |
+
 ```bash
 export ACADEMIC_SEARCH_LLM_BASE_URL=https://api.wpironman.top/v1
 export ACADEMIC_SEARCH_LLM_API_KEY=你的中转密钥
@@ -267,6 +277,8 @@ export ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http
 默认只发送标题、摘要、标识符和用户批准的元数据；全文只有在 workflow 中显式设置
 `privacy.allow_full_text: true` 才会上传。密钥不会写入日志、manifest 或 prompt artifact。
 网关不可用、超时或返回坏 JSON 时，模型步骤最多重试一次并标记为 `skipped`，检索、核验和导出继续。
+
+中转控制台：[api.wpironman.top](https://api.wpironman.top)。论文源、引用关系和核验结果仍以本项目的直连数据为准。
 
 ## 数据源如何分工
 
