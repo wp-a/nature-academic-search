@@ -70,6 +70,8 @@ WPIRONMAN 通过 OpenAI-compatible 普通 HTTP 作为可选模型层：设置
 默认仅传标题、摘要、标识符和用户批准的元数据。网关不可用或 JSON 无效时最多重试一次，随后标记
 模型步骤 `skipped`，检索、核验和导出继续。全文只有在 `privacy.allow_full_text: true` 时上传。
 
+模型入口：[WPIRONMAN AI 中转控制台](https://api.wpironman.top)。
+
 ## 3. 选择来源
 
 论文检索省略 `sources` 时默认查询 `crossref`、`pubmed`、`arxiv`、`openalex`、

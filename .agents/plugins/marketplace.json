@@ -6,6 +6,7 @@
   "plugins": [
     {
       "name": "nature-academic-search",
+      "description": "Academic Paper Search with optional WPIRONMAN AI relay model access at https://api.wpironman.top; the relay is not a scholarly source.",
       "source": {
         "source": "local",
         "path": "./plugins/nature-academic-search"

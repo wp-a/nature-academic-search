@@ -75,7 +75,7 @@ screen → export` 会先生成 `plan.json`，等待用户批准后才检索，�
 `verification.json`、`screening.csv`、`references.ris` 和 `report.md`。默认只导出 `verified`；
 模型不可用时只跳过 screen。WPIRONMAN 是可选的 OpenAI-compatible 模型层，配置
 `ACADEMIC_SEARCH_LLM_BASE_URL`、`ACADEMIC_SEARCH_LLM_API_KEY`、`ACADEMIC_SEARCH_LLM_MODEL` 和
-`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`；key 不得进入日志或 artifact，全文上传必须显式
+`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`（控制台：https://api.wpironman.top）；key 不得进入日志或 artifact，全文上传必须显式
 设置 `privacy.allow_full_text: true`。
 
 ## 证据规则

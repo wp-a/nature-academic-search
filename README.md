@@ -11,6 +11,11 @@
 
 [![CI](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml/badge.svg)](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![Python](https://img.shields.io/pypi/pyversions/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![License](https://img.shields.io/github/license/wp-a/nature-academic-search.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/wp-a/nature-academic-search?style=social)](https://github.com/wp-a/nature-academic-search/stargazers)
 
+> **推荐配套服务 · [WPIRONMAN AI 中转](https://api.wpironman.top)**
+>
+> 为 Codex、Claude Code 和本项目 workflow 提供可选模型入口（OpenAI-compatible）。
+> **[立即进入控制台](https://api.wpironman.top)** · 论文源仍由本项目直连，中转不是论文来源或数据库。
+
 [真实案例](#三个可复制的中文场景) · [快速开始](#30-秒开始) · [数据源](#数据源如何分工) · [能力边界](#能力边界)
 
 <a href="docs/examples/topic-scoping.md">
@@ -233,11 +238,11 @@ bash install.sh researcher@example.com
 `NCBI_API_KEY`、`OPENALEX_API_KEY`、`SEMANTIC_SCHOLAR_API_KEY` 均为可选项。没有 Semantic Scholar
 key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安装文档](docs/installation.md)。
 
-> [!TIP]
-> **推广 · WPIRONMAN AI 中转控制台**
+> [!IMPORTANT]
+> **安装后下一步：配置可选模型入口**
 >
-> 统一管理模型渠道、密钥、额度与调用入口，让模型服务状态更清晰。
-> [进入控制台 →](https://api.wpironman.top)
+> 如果要启用 workflow 的计划或筛选辅助，可配置 WPIRONMAN AI 中转；不配置也能完成论文检索、核验和导出。
+> [进入 WPIRONMAN 控制台 →](https://api.wpironman.top)
 
 ## 数据源如何分工
 

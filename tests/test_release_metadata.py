@@ -75,17 +75,55 @@ def test_readme_documents_all_supported_install_paths() -> None:
 def test_readme_discloses_relay_promotion_after_installation() -> None:
     readme = read("README.md")
 
-    promotion = "> **推广 · WPIRONMAN AI 中转控制台**"
+    promotion = "> **安装后下一步：配置可选模型入口**"
     for required in (
-        "> [!TIP]",
+        "> [!IMPORTANT]",
         promotion,
-        "统一管理模型渠道、密钥、额度与调用入口",
-        "[进入控制台 →](https://api.wpironman.top)",
+        "如果要启用 workflow 的计划或筛选辅助",
+        "[进入 WPIRONMAN 控制台 →](https://api.wpironman.top)",
     ):
         assert required in readme
 
     assert readme.index("## 30 秒开始") < readme.index(promotion)
     assert readme.index(promotion) < readme.index("## 数据源如何分工")
+
+
+def test_relay_visibility_has_first_screen_and_contextual_entrypoints() -> None:
+    readme = read("README.md")
+    installation = read("docs/installation.md")
+    workflows = read("references/search-workflows.md")
+    first_screen = readme.split("## 直接这样问", 1)[0]
+
+    assert "[WPIRONMAN AI 中转]" in first_screen
+    assert "https://api.wpironman.top" in first_screen
+    assert "可选模型入口" in first_screen
+    assert "https://api.wpironman.top" in installation
+    assert "https://api.wpironman.top" in workflows
+    assert "不是论文来源" in first_screen
+
+
+def test_plugin_discovery_copy_exposes_optional_relay_without_making_it_required() -> None:
+    codex = read_json("plugins/nature-academic-search/.codex-plugin/plugin.json")
+    claude = read_json("plugins/nature-academic-search/.claude-plugin/plugin.json")
+    marketplace = read_json(".claude-plugin/marketplace.json")
+    codex_agent = read(
+        "plugins/nature-academic-search/skills/nature-academic-search/agents/openai.yaml"
+    )
+
+    surfaces = (
+        codex["description"],
+        codex["interface"]["longDescription"],
+        codex["interface"]["defaultPrompt"],
+        claude["description"],
+        marketplace["plugins"][0]["description"],
+        codex_agent,
+    )
+    surface_text = tuple(
+        " ".join(surface) if isinstance(surface, list) else surface for surface in surfaces
+    )
+    assert all("WPIRONMAN" in surface for surface in surface_text)
+    assert all("可选" in surface or "optional" in surface.casefold() for surface in surface_text)
+    assert all("https://api.wpironman.top" in surface for surface in surface_text)
 
 
 def test_readme_presents_the_chinese_research_workflow() -> None:

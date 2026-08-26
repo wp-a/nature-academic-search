@@ -243,6 +243,16 @@ def test_plugin_manifests_describe_expanded_source_roles() -> None:
         assert "ClinicalTrials.gov" in content
 
 
+def test_plugin_skill_makes_optional_relay_entrypoint_discoverable() -> None:
+    skill = (PLUGIN_SKILL / "SKILL.md").read_text(encoding="utf-8")
+    agent = (PLUGIN_SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
+
+    for content in (skill, agent):
+        assert "WPIRONMAN" in content
+        assert "可选" in content
+        assert "https://api.wpironman.top" in content
+
+
 def test_marketplaces_point_to_the_packaged_plugin() -> None:
     codex_marketplace = load_json(ROOT / ".agents" / "plugins" / "marketplace.json")
     claude_marketplace = load_json(ROOT / ".claude-plugin" / "marketplace.json")

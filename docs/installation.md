@@ -95,6 +95,8 @@ export SEMANTIC_SCHOLAR_API_KEY=
 本地 workflow runner 不需要模型即可完成检索、核验和导出。若要启用计划或初筛辅助，可配置
 OpenAI-compatible 中转站；密钥只放在运行环境，不要写入 YAML：
 
+> **模型入口：** [进入 WPIRONMAN AI 中转控制台](https://api.wpironman.top)
+
 ```bash
 export ACADEMIC_SEARCH_LLM_BASE_URL=https://api.wpironman.top/v1
 export ACADEMIC_SEARCH_LLM_API_KEY=your-relay-key
