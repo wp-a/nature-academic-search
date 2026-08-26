@@ -5,22 +5,22 @@
 
 ## 默认论文源
 
-| source 参数 | 主要用途 | 强标识符/特征 | 边界 |
-|---|---|---|---|
-| `crossref` | DOI、出版商元数据、格式化引用 | DOI | 覆盖不等于完整学科检索 |
-| `pubmed` | 生物医学索引、PMID、MeSH | PMID、记录 DOI | 不代表可获得全文 |
-| `arxiv` | 预印本、版本线索 | arXiv ID | 预印本不等于同行评审论文 |
-| `openalex` | 跨学科发现、开放获取与引用指标 | OpenAlex ID、DOI/PMID | 引用次数仅代表 OpenAlex 口径 |
-| `europe_pmc` | 生物医学补充、PMCID、开放全文线索 | PMID、PMCID、DOI | 与 PubMed 重叠但字段不完全相同 |
+| source 参数 | 主要用途 | 强标识符/特征 | 引文图谱方向 | 边界 |
+|---|---|---|---|---|
+| `crossref` | DOI、出版商元数据、格式化引用 | DOI | `references` | 覆盖不等于完整学科检索；无统一 incoming 接口 |
+| `pubmed` | 生物医学索引、PMID、MeSH | PMID、记录 DOI | `references` + `cited_by` | 不代表可获得全文；受 NCBI 速率限制 |
+| `arxiv` | 预印本、版本线索 | arXiv ID | 不提供引用边 | 预印本不等于同行评审论文 |
+| `openalex` | 跨学科发现、开放获取与引用指标 | OpenAlex ID、DOI/PMID | `references` + `cited_by` | 引用次数仅代表 OpenAlex 口径 |
+| `europe_pmc` | 生物医学补充、PMCID、开放全文线索 | PMID、PMCID、DOI | `references` | 与 PubMed 重叠但字段不完全相同 |
 
 `search_papers` 在 `entity_type="publication"` 且省略 `sources` 时调用以上五源。显式传入旧的
 `["crossref", "pubmed", "arxiv"]` 时只查询这三源，不自动扩展。
 
 ## 显式补充源
 
-| source 参数 | 使用方式 | 约束 |
-|---|---|---|
-| `semantic_scholar` | 显式 `sources` 搜索，或 `enrich=["semantic_scholar"]` | 富化只使用 DOI、PMID、arXiv 等强标识符；缺少强 ID 时跳过，不做题名猜测 |
+| source 参数 | 使用方式 | 引文图谱方向 | 约束 |
+|---|---|---|---|
+| `semantic_scholar` | 显式 `sources` 搜索，`enrich=["semantic_scholar"]`，或 `relation_sources` | `references` + `cited_by` | 富化只使用 DOI、PMID、arXiv 等强标识符；缺少强 ID 时跳过，不做题名猜测 |
 
 Semantic Scholar API key 可选，但无 key 时速率和可用性更受限。预检缺少 key 会将该凭据检查标为
 `SKIP`；不能把“适配器存在”写成“本次已检索”。
