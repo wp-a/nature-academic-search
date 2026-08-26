@@ -305,6 +305,30 @@ def test_readme_leads_to_three_copyable_real_result_cases() -> None:
         assert required in readme
 
 
+def test_readme_surfaces_six_copyable_scenarios_and_relay_boundaries() -> None:
+    readme = read("README.md")
+
+    for scenario in (
+        "六个可复制的中文场景",
+        "上下游引文追踪",
+        "综述整理",
+        "临床试验关联",
+        "academic-search-topic-scoping.png",
+        "academic-search-citation-verification.png",
+        "academic-search-pubmed-mesh.png",
+        "citation_graph",
+        "graph.json",
+        "WPIRONMAN AI 中转：可选模型层",
+        "不是论文来源",
+        "responses_http",
+        "privacy.allow_full_text",
+    ):
+        assert scenario in readme
+
+    assert "中转不提供 Crossref" in readme
+    assert "https://api.wpironman.top" in readme
+
+
 def test_mesh_example_discloses_current_main_install_boundary() -> None:
     example = read("docs/examples/pubmed-mesh.md")
     installation = read("docs/installation.md")
