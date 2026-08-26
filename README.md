@@ -175,6 +175,43 @@ bash install.sh researcher@example.com
 
 `depth=2` 必须显式请求；图谱是关系导航和审计数据，不是证据质量、因果性或影响力评分。
 
+#### 图谱长什么样
+
+下面是一个结构示意，不是固定的真实论文结果。蓝色是你查询的种子论文，绿色是它引用的论文，
+黄色是后来引用它的论文。箭头始终表示 `citing → cited`：
+
+```mermaid
+flowchart LR
+    S(["种子论文<br/>Nature 14539"])
+    R1["早期基础论文"]
+    R2["关键方法论文"]
+    C1["后续实验论文"]
+    C2["综述论文"]
+
+    S -->|"references<br/>OpenAlex + Crossref"| R1
+    S -->|"references<br/>Europe PMC"| R2
+    C1 -->|"cited_by<br/>PubMed + Semantic Scholar"| S
+    C2 -->|"cited_by<br/>OpenAlex"| S
+
+    classDef seed fill:#2563eb,color:#fff,stroke:#1e40af,stroke-width:3px
+    classDef reference fill:#dcfce7,color:#166534,stroke:#22c55e
+    classDef citing fill:#fef3c7,color:#92400e,stroke:#f59e0b
+
+    class S seed
+    class R1,R2 reference
+    class C1,C2 citing
+```
+
+读图时记住三点：
+
+- `references` 表示当前论文引用了谁，例如 `S → R1`；
+- `cited_by` 表示谁引用了当前论文，例如 `C1 → S`；
+- `observed_by` 表示哪些数据库看到了同一条边，例如 `["openalex", "crossref"]`。
+
+项目实际返回的是结构化 `citation_graph`，不是一张静态图片。少量节点可以转换成 Mermaid 放进
+Markdown；中等规模适合生成可拖拽 HTML；更大的网络可以导出到 Gephi 或 Cytoscape。图谱只说明
+论文之间的书目引用关系，不证明被引用论文支持某个结论，也不把引用次数当作证据质量。
+
 ### 5. 综述整理：检索、筛选、导出分开留痕
 
 ```text
