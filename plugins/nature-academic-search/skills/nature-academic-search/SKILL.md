@@ -21,6 +21,7 @@ description: >-
 | 生成论文引用 | `get_citation` | 只格式化已解析论文；NCT 注册不生成论文引用 |
 | 构建 PubMed 检索式 | `lookup_mesh` | 先确认 MeSH，再组合自由词 |
 | 批量导出引用文件 | 包 CLI | 读取[引用文件流程](references/citation-files.md) |
+| 扩展上下游引文 | `get_paper_by_id(include_relations=true)` | 输出有界、可追溯的 citation graph，不把缺口当作零关系 |
 
 客户端可能给工具名添加 MCP 前缀；按名称后缀识别，工具总数仍为四个。
 
@@ -29,6 +30,14 @@ description: >-
 - 默认论文源：`crossref`、`pubmed`、`arxiv`、`openalex`、`europe_pmc`。
 - 显式论文源/补充富化：`semantic_scholar`；仅用 DOI、PMID、arXiv 等强标识符富化。
 - 试验注册源：`clinicaltrials_gov`；只用于 `entity_type="trial"`，不是论文数据库。
+
+### 引文关系源
+
+图谱不是第五个 MCP 工具，而是 `get_paper_by_id` 的可选字段。默认关系源为
+`openalex`、`crossref`、`pubmed`、`europe_pmc`、`semantic_scholar`；可用
+`relation_sources` 显式缩小范围。OpenAlex 提供跨学科双向关系，Crossref 与 Europe PMC
+主要提供 outgoing references，PubMed ELink 与 Semantic Scholar 提供双向关系。arXiv 目前
+只作为论文节点和标识符来源，不宣称提供引用边。
 
 按任务选源、过滤和凭据规则见[来源分层](references/source-tiers.md)。未连接 Google Scholar、
 Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些数据库。
@@ -43,6 +52,8 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 5. 标记 `verified`、`mismatch`、`not_found` 或 `manual_needed`，冲突逐字段说明。
 6. 分开报告正式论文、预印本、trial 和未解决记录。trial 永不按题名与 publication 合并。
 7. 单条引用使用 `get_citation`；批量导出前排除或单列未核验记录。
+8. 需要滚动追踪时调用 `get_paper_by_id` 的 `include_relations=true`；默认 `depth=1`，只有
+   明确需要时才请求 `depth=2`，并设置合理的 `rows`。
 
 详细查询构建、部分成功和核验规则见[检索工作流](references/search-workflows.md)。
 
@@ -56,6 +67,13 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 每次成功的 `search_papers` 还返回 `search_run`：其中的 `run_id`、UTC 时间、请求参数、
 去重前后数量和 `result_fingerprint` 用于保存可复现的 `run.json`。每条最终记录带稳定的
 `record_id`；它不是来源标识符的替代品，而是跨次检索比较记录的本地键。
+
+启用图谱后，`citation_graph` 遵循固定契约：`nodes` 是合并后的论文节点，`edges` 始终采用
+`citing → cited` 的规范方向；`relation="references"` 表示种子指向被引用节点，
+`relation="cited_by"` 表示引用者指向种子。重复边通过 `observed_by` 合并来源。必须同时报告
+`sources_queried`、`sources_succeeded`、`sources_skipped`、`errors`、`truncated`、
+`truncation_reason` 和 `depth_completed`。源未支持某方向、缺少标识符或请求失败，只能记录为
+覆盖缺口，不能推断“没有引用”。图谱是导航和审计数据，不是证据质量或因果关系评分。
 
 需要缩小检索范围时，给 `search_papers` 传入统一的 `filters` 对象：`date_from`、`date_to`
 （`YYYY-MM-DD`）、`language`、`author`、`document_type`（字符串或列表）和 `identifiers`。
@@ -71,9 +89,9 @@ Web of Science、Scopus、Embase、CNKI、万方，不得声称检索过这些�
 静默进入已核验引用集合。
 
 需要多步自动化时使用本地 YAML workflow runner，而不是新增 MCP 工具。`plan → search → verify →
-screen → export` 会先生成 `plan.json`，等待用户批准后才检索，并输出 `run.json`、`results.json`、
+screen → expand_citations → export`（其中 `expand_citations` 可选）会先生成 `plan.json`，等待用户批准后才检索，并输出 `run.json`、`results.json`、
 `verification.json`、`screening.csv`、`references.ris` 和 `report.md`。默认只导出 `verified`；
-模型不可用时只跳过 screen。WPIRONMAN 是可选的 OpenAI-compatible 模型层，配置
+启用 `expand_citations` 时额外生成 `graph.json`。模型不可用时只跳过 screen。WPIRONMAN 是可选的 OpenAI-compatible 模型层，配置
 `ACADEMIC_SEARCH_LLM_BASE_URL`、`ACADEMIC_SEARCH_LLM_API_KEY`、`ACADEMIC_SEARCH_LLM_MODEL` 和
 `ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`（控制台：https://api.wpironman.top）；key 不得进入日志或 artifact，全文上传必须显式
 设置 `privacy.allow_full_text: true`。

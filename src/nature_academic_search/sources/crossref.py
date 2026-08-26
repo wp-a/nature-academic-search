@@ -14,6 +14,7 @@ class CrossRefSource:
     """CrossRef API wrapper with unified result format."""
 
     SOURCE_NAME = "crossref"
+    RELATION_CAPABILITIES = frozenset({"references"})
 
     def __init__(self):
         config = get_config()
@@ -124,6 +125,33 @@ class CrossRefSource:
 
         return resp.text.strip()
 
+    def get_citation_relations(
+        self, identifier: str, relation: str = "both", rows: int = 20
+    ) -> dict[str, list[dict]]:
+        """Return references recorded in Crossref metadata.
+
+        Crossref exposes outgoing references on a work, but does not provide a
+        portable incoming-citations endpoint.  The latter is intentionally
+        returned as an empty list; the graph coordinator records the source
+        capability separately.
+        """
+        result: dict[str, list[dict]] = {"references": [], "cited_by": []}
+        if relation not in {"references", "both"}:
+            return result
+        doi = _normalize_doi(identifier)
+        if not doi:
+            raise DataSourceError(self.SOURCE_NAME, f"Invalid DOI: {identifier}")
+        payload = self._request(f"/works/{quote(doi, safe='/')}")
+        references = payload.get("reference") if isinstance(payload, dict) else []
+        if not isinstance(references, list):
+            return result
+        result["references"] = [
+            _normalize_reference(item)
+            for item in references[: max(1, min(rows, 100))]
+            if isinstance(item, dict)
+        ]
+        return result
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -212,3 +240,45 @@ class CrossRefSource:
             "url": item.get("URL"),
         })
         return base
+
+
+def _normalize_doi(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    normalized = normalized.removeprefix("doi:").strip()
+    if normalized.startswith(("https://doi.org/", "http://doi.org/")):
+        normalized = normalized.split("doi.org/", 1)[1]
+    return normalized.rstrip(". ")
+
+
+def _normalize_reference(item: dict) -> dict:
+    doi = _normalize_doi(str(item.get("DOI") or item.get("doi") or ""))
+    title = item.get("article-title") or item.get("article_title") or item.get("unstructured") or ""
+    authors = []
+    author = item.get("author")
+    if author:
+        authors = [str(author).strip()]
+    year = item.get("year")
+    try:
+        year = int(year) if year not in (None, "") else None
+    except (TypeError, ValueError):
+        year = None
+    source_url = f"https://doi.org/{doi}" if doi else ""
+    source_id = doi or str(title).strip()
+    return {
+        "entity_type": "publication",
+        "title": str(title).strip(),
+        "authors": authors,
+        "year": year,
+        "journal": str(item.get("journal-title") or item.get("journal_title") or ""),
+        "doi": doi,
+            "source": CrossRefSource.SOURCE_NAME,
+        "source_id": source_id,
+        "source_url": source_url,
+        "source_records": [
+            {
+                "source": CrossRefSource.SOURCE_NAME,
+                "source_id": source_id,
+                "source_url": source_url,
+            }
+        ],
+    }

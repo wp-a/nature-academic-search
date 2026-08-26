@@ -14,11 +14,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .graph import DEFAULT_RELATION_SOURCES, build_citation_graph
 from .provenance import stable_record_id
 from .search import search_all
 from .verification import verify_record
 
-WORKFLOW_STEPS = ("plan", "search", "verify", "screen", "export")
+DEFAULT_WORKFLOW_STEPS = ("plan", "search", "verify", "screen", "export")
+WORKFLOW_STEPS = (*DEFAULT_WORKFLOW_STEPS, "expand_citations")
 DEFAULT_OUTPUTS = (
     "run.json",
     "results.json",
@@ -38,6 +40,7 @@ class WorkflowSpec:
     outputs: tuple[str, ...]
     verification: dict[str, Any]
     screening: dict[str, Any]
+    citation_graph: dict[str, Any]
     privacy: dict[str, Any]
 
     @classmethod
@@ -50,7 +53,7 @@ class WorkflowSpec:
             raise ValueError("workflow name is required")
         if not question:
             raise ValueError("question is required")
-        raw_steps = raw.get("steps") or WORKFLOW_STEPS
+        raw_steps = raw.get("steps") or DEFAULT_WORKFLOW_STEPS
         if isinstance(raw_steps, str):
             raw_steps = [raw_steps]
         steps = tuple(str(step).strip() for step in raw_steps)
@@ -69,6 +72,35 @@ class WorkflowSpec:
         search.setdefault("rows", 20)
         if search["entity_type"] not in {"publication", "trial"}:
             raise ValueError("search.entity_type must be 'publication' or 'trial'")
+        raw_graph = raw.get("citation_graph") or {}
+        if not isinstance(raw_graph, Mapping):
+            raise ValueError("citation_graph must be an object")
+        citation_graph = dict(raw_graph)
+        graph_relation = str(citation_graph.get("relation") or "both")
+        if graph_relation not in {"references", "cited_by", "both"}:
+            raise ValueError("citation_graph.relation must be 'references', 'cited_by', or 'both'")
+        graph_depth = citation_graph.get("depth", 1)
+        if (
+            not isinstance(graph_depth, int)
+            or isinstance(graph_depth, bool)
+            or graph_depth not in {1, 2}
+        ):
+            raise ValueError("citation_graph.depth must be 1 or 2")
+        graph_rows = citation_graph.get("rows", 20)
+        if (
+            not isinstance(graph_rows, int)
+            or isinstance(graph_rows, bool)
+            or not 1 <= graph_rows <= 100
+        ):
+            raise ValueError("citation_graph.rows must be between 1 and 100")
+        graph_sources = citation_graph.get("sources")
+        if isinstance(graph_sources, str):
+            raise ValueError("citation_graph.sources must be an array")
+        if graph_sources is not None and (
+            not isinstance(graph_sources, (list, tuple))
+            or not all(isinstance(source, str) for source in graph_sources)
+        ):
+            raise ValueError("citation_graph.sources must be an array of source names")
         return cls(
             workflow=workflow,
             question=question,
@@ -77,6 +109,7 @@ class WorkflowSpec:
             outputs=normalized_outputs,
             verification=dict(raw.get("verification") or {}),
             screening=dict(raw.get("screening") or {}),
+            citation_graph=citation_graph,
             privacy=dict(raw.get("privacy") or {}),
         )
 
@@ -105,10 +138,12 @@ class WorkflowRunner:
         provider: Any | None = None,
         search_fn: Callable[[WorkflowSpec], Any] | None = None,
         lookup_fn: Callable[[str, str], Any] | None = None,
+        graph_fn: Callable[..., Any] | None = None,
     ) -> None:
         self.provider = provider
         self.search_fn = search_fn
         self.lookup_fn = lookup_fn
+        self.graph_fn = graph_fn
 
     def run(
         self,
@@ -156,6 +191,10 @@ class WorkflowRunner:
             verification = self._verify_records(records, errors)
             self._write_json(destination, "verification.json", verification)
 
+        if "expand_citations" in workflow.steps:
+            graphs = self._expand_citation_graphs(records, workflow, errors)
+            self._write_json(destination, "graph.json", graphs)
+
         screening = self._screen_records(workflow, records, model_steps, errors)
         if "screen" in workflow.steps:
             self._write_csv(destination, "screening.csv", screening)
@@ -174,6 +213,8 @@ class WorkflowRunner:
             )
 
         artifacts = ["plan.json", "run.json"]
+        if (destination / "graph.json").exists():
+            artifacts.append("graph.json")
         artifacts.extend(output for output in workflow.outputs if (destination / output).exists())
         completed_at = _utc_now()
         status = "completed_with_skips" if any(
@@ -260,6 +301,48 @@ class WorkflowRunner:
                     }
                 )
         return output
+
+    def _expand_citation_graphs(
+        self,
+        records: Sequence[Mapping[str, Any]],
+        workflow: WorkflowSpec,
+        errors: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        config = workflow.citation_graph
+        relation = str(config.get("relation") or "both")
+        depth = int(config.get("depth", 1))
+        rows = int(config.get("rows", 20))
+        max_nodes = int(config.get("max_nodes", 100))
+        max_edges = int(config.get("max_edges", 200))
+        source_names = tuple(config.get("sources") or DEFAULT_RELATION_SOURCES)
+        graph_builder = self.graph_fn or build_citation_graph
+        adapters = None
+        if self.graph_fn is None:
+            from .sources.registry import build_adapters
+
+            adapters = build_adapters(source_names)
+        graphs: list[dict[str, Any]] = []
+        for record in records:
+            try:
+                kwargs = {
+                    "relation": relation,
+                    "depth": depth,
+                    "rows": rows,
+                    "relation_sources": source_names,
+                    "max_nodes": max_nodes,
+                    "max_edges": max_edges,
+                }
+                if adapters is not None:
+                    kwargs["adapters"] = adapters
+                graphs.append(graph_builder(record, **kwargs))
+            except Exception as exc:
+                errors.append({"step": "expand_citations", "error": _safe_error(exc)})
+        return {
+            "schema_version": "1",
+            "graphs": graphs,
+            "graph_count": len(graphs),
+            "errors": [item for item in errors if item.get("step") == "expand_citations"] or None,
+        }
 
     def _screen_records(
         self,

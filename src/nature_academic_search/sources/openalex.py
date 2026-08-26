@@ -11,6 +11,7 @@ from ..errors import DataSourceError
 from ..http import request_json
 
 SOURCE_NAME = "openalex"
+RELATION_CAPABILITIES = frozenset({"references", "cited_by"})
 BASE_URL = "https://api.openalex.org/works"
 SELECT_FIELDS = ",".join(
     (
@@ -28,6 +29,7 @@ SELECT_FIELDS = ",".join(
         "open_access",
     )
 )
+RELATION_SELECT_FIELDS = f"{SELECT_FIELDS},referenced_works"
 
 
 class OpenAlexSource:
@@ -119,6 +121,61 @@ class OpenAlexSource:
             raise DataSourceError(SOURCE_NAME, "Malformed work response")
         return _normalize_work(payload)
 
+    def get_citation_relations(
+        self, identifier: str, relation: str = "both", rows: int = 20
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return outgoing references and incoming citing works for a work."""
+        config = get_config()
+        normalized = _lookup_identifier(identifier)
+        payload, _ = request_json(
+            source=SOURCE_NAME,
+            method="GET",
+            url=f"{BASE_URL}/{normalized}",
+            params={"select": RELATION_SELECT_FIELDS, **_api_key_params(config)},
+            timeout=config.openalex_timeout,
+        )
+        if not isinstance(payload, dict) or not payload.get("id"):
+            raise DataSourceError(SOURCE_NAME, "Malformed relation seed response")
+
+        openalex_id = _openalex_id(str(payload["id"]))
+        result: dict[str, list[dict[str, Any]]] = {
+            "references": [],
+            "cited_by": [],
+        }
+        if relation in {"references", "both"}:
+            references = payload.get("referenced_works") or []
+            reference_ids = [
+                str(value)
+                for value in references
+                if isinstance(value, str)
+            ][:rows]
+            result["references"] = _fetch_relation_works(
+                reference_ids, config, rows
+            )
+        if relation in {"cited_by", "both"}:
+            cited_payload, _ = request_json(
+                source=SOURCE_NAME,
+                method="GET",
+                url=BASE_URL,
+                params={
+                    "filter": f"cites:{openalex_id}",
+                    "per-page": min(rows, 100),
+                    "select": SELECT_FIELDS,
+                    **_api_key_params(config),
+                },
+                timeout=config.openalex_timeout,
+            )
+            if not isinstance(cited_payload, dict) or not isinstance(
+                cited_payload.get("results"), list
+            ):
+                raise DataSourceError(SOURCE_NAME, "Malformed cited-by response")
+            result["cited_by"] = [
+                _normalize_work(item)
+                for item in cited_payload["results"]
+                if isinstance(item, dict)
+            ][:rows]
+        return result
+
 
 def _normalize_work(work: dict[str, Any]) -> dict[str, Any]:
     source_url = str(work.get("id") or "")
@@ -188,6 +245,50 @@ def _lookup_identifier(identifier: str) -> str:
     if value.startswith("10."):
         return f"https://doi.org/{value}"
     return _openalex_id(value)
+
+
+def _api_key_params(config: Any) -> dict[str, str]:
+    return {"api_key": config.openalex_api_key} if config.openalex_api_key else {}
+
+
+def _fetch_relation_works(
+    identifiers: list[str], config: Any, rows: int
+) -> list[dict[str, Any]]:
+    if not identifiers:
+        return []
+    ids = []
+    for identifier in identifiers:
+        try:
+            ids.append(_openalex_id(identifier))
+        except DataSourceError:
+            continue
+    if not ids:
+        return []
+    payload, _ = request_json(
+        source=SOURCE_NAME,
+        method="GET",
+        url=BASE_URL,
+        params={
+            "filter": "openalex_id:" + "|".join(ids),
+            "per-page": min(rows, 100),
+            "select": SELECT_FIELDS,
+            **_api_key_params(config),
+        },
+        timeout=config.openalex_timeout,
+    )
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+        raise DataSourceError(SOURCE_NAME, "Malformed referenced-works response")
+    records = [
+        _normalize_work(item)
+        for item in payload["results"]
+        if isinstance(item, dict)
+    ]
+    by_id = {str(record.get("openalex_id")): record for record in records}
+    return [
+        by_id[identifier.rsplit("/", 1)[-1].upper()]
+        for identifier in ids
+        if identifier in by_id
+    ]
 
 
 def _openalex_id(value: str) -> str:

@@ -45,7 +45,29 @@ LANGUAGE、AUTHOR、PUB_TYPE；arXiv 使用已有的 submittedDate 范围。源�
 不得当作证据质量或引用真实性。`search_run.filters`、`search_run.ranking` 和
 `search_run.source_translation` 应与 `run.json` 一起保存。
 
-## 2.2 声明式科研工作流
+## 2.2 引文图谱扩展
+
+对一篇已解析的 publication 使用 `get_paper_by_id` 时，可通过
+`include_relations=true` 获取上下游 citation graph：
+
+```json
+{
+  "id": "10.1000/example",
+  "include_relations": true,
+  "relation": "both",
+  "depth": 1,
+  "rows": 20,
+  "relation_sources": ["openalex", "crossref", "pubmed", "europe_pmc", "semantic_scholar"]
+}
+```
+
+`references` 表示种子指向其参考文献，`cited_by` 表示引用者指向种子；图中边统一采用
+`citing → cited`。默认一跳，二跳必须显式设置 `depth=2`，并受节点/边预算约束。输出中的
+`observed_by` 用于合并不同源看到的同一条边，`sources_skipped` 与 `errors` 必须原样保留。
+Crossref/Europe PMC 只提供 references 的源不能被解释为“没有 incoming 引用”；arXiv 目前
+只用于节点与标识符。图谱描述关系结构，不是证据质量或因果性判断。
+
+## 2.3 声明式科研工作流
 
 需要重复执行计划、检索、核验、筛选和导出时，使用本地 YAML runner：
 

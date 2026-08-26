@@ -45,6 +45,14 @@ def test_mcp_exposes_exactly_four_backward_compatible_tools() -> None:
     } <= set(
         search_tool.inputSchema["properties"]
     )
+    paper_tool = next(tool for tool in tools if tool.name == "get_paper_by_id")
+    assert {
+        "include_relations",
+        "relation",
+        "depth",
+        "rows",
+        "relation_sources",
+    } <= set(paper_tool.inputSchema["properties"])
 
 
 def test_empty_identifier_is_rejected_before_source_call() -> None:
@@ -89,6 +97,37 @@ def test_get_paper_by_id_rejects_malformed_expected_metadata() -> None:
     result = json.loads(server.get_paper_by_id("10.1000/example", expected=["bad"]))
 
     assert result == {"error": "Expected metadata must be an object"}
+
+
+def test_get_paper_by_id_can_attach_bounded_citation_graph() -> None:
+    server = load_server()
+    actual = {
+        "entity_type": "publication",
+        "record_id": "publication:doi:10.1000/example",
+        "doi": "10.1000/example",
+        "title": "Resolved",
+        "year": 2024,
+    }
+    graph = {"schema_version": "1", "nodes": [actual], "edges": []}
+    with (
+        patch.object(server._crossref, "get_by_doi", return_value=actual),
+        patch.object(server, "build_citation_graph", return_value=graph) as build,
+    ):
+        result = json.loads(
+            server.get_paper_by_id(
+                "10.1000/example",
+                include_relations=True,
+                relation="references",
+                depth=2,
+                rows=7,
+                relation_sources=["crossref"],
+            )
+        )
+
+    assert result["citation_graph"] == graph
+    build.assert_called_once()
+    assert build.call_args.kwargs["depth"] == 2
+    assert build.call_args.kwargs["relation_sources"] == ["crossref"]
 
 
 def test_trial_verification_does_not_compare_paper_only_fields() -> None:

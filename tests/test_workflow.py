@@ -138,3 +138,36 @@ def test_provider_failure_skips_screening_but_keeps_export(tmp_path: Path) -> No
     assert result["model_steps"]["screen"]["status"] == "skipped"
     assert "pending_manual" in (tmp_path / "screening.csv").read_text()
     assert "10.1000/example" in (tmp_path / "references.ris").read_text()
+
+
+def test_workflow_expands_citation_graph_only_when_step_is_explicit(tmp_path: Path) -> None:
+    record = {
+        "entity_type": "publication",
+        "record_id": "publication:doi:10.1000/example",
+        "doi": "10.1000/example",
+        "title": "Example",
+        "year": 2024,
+    }
+
+    def search(_: WorkflowSpec) -> dict:
+        return {"results": [record], "errors": None}
+
+    calls: list[dict] = []
+
+    def graph_fn(seed: dict, **kwargs: object) -> dict:
+        calls.append({"seed": seed, **kwargs})
+        return {"schema_version": "1", "seed_record_id": seed["record_id"], "edges": []}
+
+    workflow = spec(
+        steps=["plan", "search", "expand_citations"],
+        citation_graph={"relation": "references", "depth": 2, "sources": ["crossref"]},
+    )
+    result = WorkflowRunner(search_fn=search, graph_fn=graph_fn).run(
+        workflow, tmp_path, approve=True
+    )
+
+    assert result["status"] == "completed"
+    graph_payload = json.loads((tmp_path / "graph.json").read_text())
+    assert graph_payload["graph_count"] == 1
+    assert calls[0]["depth"] == 2
+    assert calls[0]["relation_sources"] == ("crossref",)

@@ -12,12 +12,14 @@ from ..http import request_json
 
 SOURCE_NAME = "europe_pmc"
 SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+REST_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 
 
 class EuropePmcSource:
     """Search Europe PMC and resolve PMID/PMCID records."""
 
     name = SOURCE_NAME
+    RELATION_CAPABILITIES = frozenset({"references"})
 
     def search(
         self,
@@ -100,6 +102,45 @@ class EuropePmcSource:
     def get_by_pmcid(self, pmcid: str) -> dict[str, Any]:
         return self.get_by_id(pmcid)
 
+    def get_citation_relations(
+        self, identifier: str, relation: str = "both", rows: int = 20
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return outgoing references from the Europe PMC references endpoint."""
+        result: dict[str, list[dict[str, Any]]] = {"references": [], "cited_by": []}
+        if relation not in {"references", "both"}:
+            return result
+        value = str(identifier or "").strip().upper()
+        if value.startswith("PMID:"):
+            value = value[5:].strip()
+        if re.fullmatch(r"\d{7,8}", value):
+            native_source, native_id = "MED", value
+        else:
+            pmcid = _pmcid(value)
+            if not pmcid:
+                raise DataSourceError(SOURCE_NAME, f"Invalid PMID/PMCID: {identifier}")
+            native_source, native_id = "PMC", pmcid
+        config = get_config()
+        payload, _ = request_json(
+            source=SOURCE_NAME,
+            method="GET",
+            url=f"{REST_URL}/{native_source}/{native_id}/references",
+            params={"pageSize": max(1, min(rows, config.max_rows, 1_000)), "format": "json"},
+            timeout=config.europe_pmc_timeout,
+        )
+        references = (
+            payload.get("referenceList", {}).get("reference", [])
+            if isinstance(payload, dict)
+            else []
+        )
+        if not isinstance(references, list):
+            raise DataSourceError(SOURCE_NAME, "Malformed references response")
+        result["references"] = [
+            _normalize_reference(item)
+            for item in references[: max(1, min(rows, 100))]
+            if isinstance(item, dict)
+        ]
+        return result
+
 
 def _result_items(payload: Any) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
@@ -171,6 +212,35 @@ def _normalize_result(item: dict[str, Any]) -> dict[str, Any]:
             }
         )
     return record
+
+
+def _normalize_reference(item: dict[str, Any]) -> dict[str, Any]:
+    native_source = str(item.get("source") or "").upper()
+    native_id = str(item.get("id") or item.get("pmid") or item.get("pmcid") or "")
+    pmid = _pmid(str(item.get("pmid") or (native_id if native_source == "MED" else "")))
+    pmcid = _pmcid(str(item.get("pmcid") or (native_id if native_source == "PMC" else "")))
+    source_id = f"{native_source}:{native_id}" if native_source and native_id else native_id
+    source_url = f"https://europepmc.org/article/{native_source}/{native_id}" if native_id else ""
+    return {
+        "entity_type": "publication",
+        "title": str(item.get("title") or ""),
+        "authors": (
+            [str(item.get("authorString") or "").strip()]
+            if item.get("authorString")
+            else []
+        ),
+        "year": _year(item.get("pubYear")),
+        "journal": str(item.get("journalTitle") or ""),
+        "doi": _doi(str(item.get("doi") or "")),
+        "pmid": pmid,
+        "pmcid": pmcid,
+        "source": SOURCE_NAME,
+        "source_id": source_id,
+        "source_url": source_url,
+        "source_records": [
+            {"source": SOURCE_NAME, "source_id": source_id, "source_url": source_url}
+        ],
+    }
 
 
 def _identifier_query(identifier: str) -> str:

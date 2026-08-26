@@ -95,6 +95,46 @@ search_run:
 `not_found` 或 `manual_needed`。不确定记录必须单独列出，不能为了生成一份漂亮的引用而
 自动补全或静默覆盖冲突。
 
+## 引文图谱：沿引用关系扩展
+
+需要从一篇种子论文向前追溯参考文献、向后寻找 citing papers 时，在同一个
+`get_paper_by_id` 调用中打开图谱，不需要记忆新的 MCP 工具名：
+
+```json
+{
+  "id": "10.1038/s41586-020-2649-2",
+  "include_relations": true,
+  "relation": "both",
+  "depth": 1,
+  "rows": 20,
+  "relation_sources": ["openalex", "crossref", "pubmed", "europe_pmc", "semantic_scholar"]
+}
+```
+
+`relation` 可取 `references`（种子 → 被引用）、`cited_by`（引用者 → 种子）或 `both`。
+默认只展开一跳；`depth=2` 必须显式请求，且始终受节点/边上限约束。返回值会在原论文记录上增加
+`citation_graph`，包括：
+
+- `nodes`：带稳定 `record_id` 的论文节点，跨源同一论文合并并保留 `source_records`；
+- `edges`：统一为 citing → cited 的方向，附 `relation` 和 `observed_by` 来源列表；
+- `sources_queried`、`sources_succeeded`、`sources_skipped`、`errors`：逐源披露实际覆盖；
+- `truncated`、`truncation_reason`、`depth_completed`：说明是否触达预算边界。
+
+OpenAlex 负责跨学科上下游，Crossref/Europe PMC 主要提供参考文献，PubMed 提供生物医学双向关系，
+Semantic Scholar 可作为显式补充。某源没有 incoming 接口、缺少强标识符或被限流时，结果会记录缺口，
+不会把“未查询到”误写成“没有引用”。引文关系只描述图结构，不代表证据质量、因果关系或研究结论。
+
+在 YAML workflow 中显式加入 `expand_citations`，即可把同样的图谱写入 `graph.json`：
+
+```yaml
+steps: [plan, search, verify, expand_citations, export]
+citation_graph:
+  relation: both
+  depth: 1
+  rows: 10
+  sources: [openalex, crossref, pubmed, europe_pmc]
+```
+
 ## 智能发现：过滤与可复现排序
 
 需要缩小范围时，给 `search_papers` 传入统一的 `filters`，不要把一个数据库的字段语法硬套到所有来源：
@@ -248,12 +288,12 @@ key 时预检会标记 `SKIP`，不会回显任何凭据。完整说明见[安�
 
 | 来源 | 调用方式 | 最适合做什么 | 边界 |
 |---|---|---|---|
-| CrossRef | 默认论文源 | DOI、出版商元数据、格式化引用 | 不是完整学科数据库 |
-| PubMed | 默认论文源 | 生物医学索引、PMID、MeSH | 不保证全文可得 |
+| CrossRef | 默认论文源；图谱 references | DOI、出版商元数据、格式化引用、出版商参考文献 | 没有统一 incoming 引用接口 |
+| PubMed | 默认论文源；图谱双向 | 生物医学索引、PMID、MeSH、ELink 上下游 | 不保证全文可得；受 NCBI 速率限制 |
 | arXiv | 默认论文源 | 预印本与版本线索 | 不代表同行评审状态 |
 | OpenAlex | 默认论文源 | 跨学科发现、OA 与来源化引用指标 | 指标只代表 OpenAlex 口径 |
-| Europe PMC | 默认论文源 | PMID/PMCID、生物医学与开放全文线索 | 与 PubMed 有重叠 |
-| Semantic Scholar | 显式搜索或 `enrich` | 补充元数据和引用/参考文献指标 | 富化只用强标识符 |
+| Europe PMC | 默认论文源；图谱 references | PMID/PMCID、生物医学与开放全文线索、参考文献 | 主要提供 outgoing references，与 PubMed 有重叠 |
+| Semantic Scholar | 显式搜索、`enrich` 或图谱 | 补充元数据、引用和参考文献关系 | 需显式选择；受 API 配额影响 |
 | ClinicalTrials.gov | `entity_type="trial"` | NCT 注册、状态、干预、申办方和入组信息 | 试验注册不是论文 |
 
 默认 publication 搜索调用前五源。显式传入旧三源列表时仍只调用 CrossRef、PubMed、arXiv，兼容旧工作流。

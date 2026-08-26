@@ -29,12 +29,15 @@ FIELDS = ",".join(
         "openAccessPdf",
     )
 )
+RELATION_CAPABILITIES = frozenset({"references", "cited_by"})
+RELATION_FIELDS = f"{FIELDS},citations,references"
 
 
 class SemanticScholarSource:
     """Search and resolve papers through the Academic Graph API."""
 
     name = SOURCE_NAME
+    RELATION_CAPABILITIES = RELATION_CAPABILITIES
 
     def __init__(self) -> None:
         self._last_request_at: float | None = None
@@ -74,6 +77,41 @@ class SemanticScholarSource:
         if not isinstance(payload, dict):
             raise DataSourceError(SOURCE_NAME, "Malformed paper response")
         return _normalize_paper(payload)
+
+    def get_citation_relations(
+        self, identifier: str, relation: str = "both", rows: int = 20
+    ) -> dict[str, list[dict[str, Any]]]:
+        try:
+            normalized = _lookup_identifier(identifier)
+        except DataSourceError:
+            # API-native opaque IDs are accepted for relation expansion.
+            normalized = str(identifier).strip()
+            if not normalized:
+                raise
+        config = get_config()
+        payload, _ = self._request(
+            url=f"{BASE_URL}/paper/{normalized}",
+            params={
+                "fields": RELATION_FIELDS,
+                "limit": max(1, min(rows, config.max_rows, 100)),
+            },
+        )
+        if not isinstance(payload, dict):
+            raise DataSourceError(SOURCE_NAME, "Malformed relation response")
+        result: dict[str, list[dict[str, Any]]] = {"references": [], "cited_by": []}
+        if relation in {"references", "both"}:
+            result["references"] = [
+                _normalize_paper(item)
+                for item in (payload.get("references") or [])[:rows]
+                if isinstance(item, dict)
+            ]
+        if relation in {"cited_by", "both"}:
+            result["cited_by"] = [
+                _normalize_paper(item)
+                for item in (payload.get("citations") or [])[:rows]
+                if isinstance(item, dict)
+            ]
+        return result
 
     def _request(
         self,

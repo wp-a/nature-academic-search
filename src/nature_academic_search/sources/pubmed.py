@@ -171,8 +171,28 @@ def _parse_article(article: ET.Element) -> dict[str, Any]:
     }
 
 
+def _extract_elink_ids(payload: Any, linkname: str) -> list[str]:
+    if not isinstance(payload, dict):
+        raise DataSourceError(SOURCE_NAME, "Malformed ELink response")
+    output: list[str] = []
+    for linkset in payload.get("linksets") or []:
+        if not isinstance(linkset, dict):
+            continue
+        for database in linkset.get("linksetdbs") or []:
+            if not isinstance(database, dict) or database.get("linkname") != linkname:
+                continue
+            output.extend(
+                str(value)
+                for value in database.get("links") or []
+                if str(value).isdigit()
+            )
+    return list(dict.fromkeys(output))
+
+
 class PubMedSource:
     """PubMed data source providing search, fetch, and MeSH lookup."""
+
+    RELATION_CAPABILITIES = frozenset({"references", "cited_by"})
 
     def search(
         self,
@@ -293,6 +313,47 @@ class PubMedSource:
             raise DataSourceError(SOURCE_NAME, f"PMID {pmid} not found")
 
         return _parse_article(article)
+
+    def get_citation_relations(
+        self, identifier: str, relation: str = "both", rows: int = 20
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Resolve PubMed references and citing articles through ELink."""
+        pmid = str(identifier or "").strip()
+        if pmid.upper().startswith("PMID:"):
+            pmid = pmid[5:].strip()
+        if not pmid.isdigit():
+            raise DataSourceError(SOURCE_NAME, f"Invalid PMID: {identifier}")
+        result: dict[str, list[dict[str, Any]]] = {"references": [], "cited_by": []}
+        links = {
+            "references": "pubmed_pubmed_refs",
+            "cited_by": "pubmed_pubmed_citedin",
+        }
+        for edge_relation, linkname in links.items():
+            if relation not in {edge_relation, "both"}:
+                continue
+            response = _get(
+                "elink.fcgi",
+                {
+                    "db": "pubmed",
+                    "dbfrom": "pubmed",
+                    "id": pmid,
+                    "linkname": linkname,
+                    "retmode": "json",
+                },
+            )
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                raise DataSourceError(SOURCE_NAME, "Malformed ELink response", exc) from exc
+            ids = _extract_elink_ids(payload, linkname)[: max(1, min(rows, 100))]
+            records: list[dict[str, Any]] = []
+            for linked_id in ids:
+                try:
+                    records.append(self.get_by_pmid(linked_id))
+                except DataSourceError:
+                    continue
+            result[edge_relation] = records
+        return result
 
     def lookup_mesh(self, term: str) -> dict[str, Any]:
         """Look up a MeSH descriptor by term.

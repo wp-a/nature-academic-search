@@ -16,6 +16,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from .errors import DataSourceError
+from .graph import DEFAULT_RELATION_SOURCES, build_citation_graph
 from .logging import setup_logging
 from .search import search_all
 from .sources.registry import (
@@ -227,6 +228,11 @@ def get_paper_by_id(
     id: str,
     id_type: str = "auto",
     expected: dict[str, Any] | None = None,
+    include_relations: bool = False,
+    relation: str = "both",
+    depth: int = 1,
+    rows: int = 20,
+    relation_sources: list[str] | None = None,
 ) -> str:
     """Get publication or trial details by a supported identifier.
 
@@ -239,6 +245,11 @@ def get_paper_by_id(
         id_type: Force a supported identifier type, or use "auto".
         expected: Optional citation or trial metadata to compare field by field
             after the identifier lookup.
+        include_relations: Attach a bounded citation graph when true.
+        relation: Graph direction: "references", "cited_by", or "both".
+        depth: Citation expansion depth, 1 by default and 2 maximum.
+        rows: Maximum neighbors per source and direction (1-100).
+        relation_sources: Optional source names for graph expansion.
 
     Returns:
         JSON string with detailed paper metadata.
@@ -247,6 +258,32 @@ def get_paper_by_id(
         return _json_error("Empty identifier")
     if expected is not None and not isinstance(expected, dict):
         return _json_error("Expected metadata must be an object")
+    if not isinstance(include_relations, bool):
+        return _json_error("include_relations must be a boolean")
+    if relation not in {"references", "cited_by", "both"}:
+        return _json_error("relation must be 'references', 'cited_by', or 'both'")
+    if not isinstance(depth, int) or isinstance(depth, bool) or depth not in {1, 2}:
+        return _json_error("depth must be 1 or 2")
+    if not isinstance(rows, int) or isinstance(rows, bool) or not 1 <= rows <= 100:
+        return _json_error("rows must be between 1 and 100")
+    if relation_sources is not None and not isinstance(relation_sources, list):
+        return _json_error("relation_sources must be an array")
+    if relation_sources is not None:
+        invalid_relation_sources = [
+            source
+            for source in relation_sources
+            if source not in SOURCE_ENTITY_TYPES
+            or SOURCE_ENTITY_TYPES[source] != "publication"
+        ]
+        if invalid_relation_sources:
+            valid = sorted(
+                source
+                for source, entity in SOURCE_ENTITY_TYPES.items()
+                if entity == "publication"
+            )
+            return _json_error(
+                f"Invalid relation_sources: {invalid_relation_sources}. Valid: {valid}"
+            )
 
     try:
         resolved_type = _resolve_id_type(id, id_type)
@@ -257,6 +294,11 @@ def get_paper_by_id(
         "tool": "get_paper_by_id",
         "id": id,
         "id_type": resolved_type,
+        "include_relations": include_relations,
+        "relation": relation,
+        "depth": depth,
+        "rows": rows,
+        "relation_sources": relation_sources,
     })
 
     try:
@@ -264,6 +306,16 @@ def get_paper_by_id(
         if expected is not None:
             result = dict(result)
             result["verification"] = verify_record(expected, result)
+        if include_relations:
+            result = dict(result)
+            result["citation_graph"] = build_citation_graph(
+                result,
+                relation=relation,
+                depth=depth,
+                rows=rows,
+                relation_sources=relation_sources or DEFAULT_RELATION_SOURCES,
+                adapters=_ADAPTERS,
+            )
     except DataSourceError as exc:
         logger.error("get_paper_by_id failed: %s", exc)
         if expected is not None and "not found" in str(exc).casefold():
@@ -274,6 +326,8 @@ def get_paper_by_id(
                 }
             )
         return _json_error(str(exc), source=exc.source)
+    except ValueError as exc:
+        return _json_error(str(exc))
     except Exception as exc:
         logger.exception("get_paper_by_id failed unexpectedly")
         return _json_error(f"Unexpected error: {exc}")

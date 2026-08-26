@@ -14,10 +14,13 @@ keywords = [
   "academic-search",
   "arxiv",
   "citation",
+  "citation-graph",
   "crossref",
+  "literature-review",
   "mcp",
   "openalex",
   "pubmed",
+  "research-workflow",
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
