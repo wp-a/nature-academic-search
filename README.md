@@ -24,6 +24,8 @@
 
 </div>
 
+> **核心承诺：把“我想找论文”变成“我能复查、核验、导出这批论文”。**
+
 ## 这是什么
 
 `nature-academic-search` 是一个面向中文科研用户的**文献检索与引用核验
@@ -34,6 +36,64 @@ references / cited_by，最后导出带来源和状态的引用文件。
 它不是只返回一串题名的搜索框，也不是把语言模型的回答当作参考文献数据库。每次
 检索都要区分实际查询过的来源、成功与失败的来源、字段冲突、预印本、试验注册和
 仍需人工判断的记录。
+
+### 你会得到什么
+
+| 研究资产 | 包含内容 | 直接用途 |
+|---|---|---|
+| 可追溯候选集 | 稳定 `record_id`、来源 URL、`sources`、`source_records` | 继续筛选、交给合作者复核 |
+| 引用核验账本 | `verified`、`mismatch`、`not_found`、`manual_needed` 与逐字段冲突 | 清理 AI 或手工整理的参考文献 |
+| 有界引文图谱 | `nodes`、`edges`、`relation`、`observed_by`、截断原因 | 追踪基础工作、方法谱系和后续研究 |
+| 可导入引用包 | RIS、BibTeX、NBIB、ENW 和批量目录 | 交给 Zotero、EndNote 或稿件工作流 |
+| 审计记录 | 查询参数、UTC 时间、来源状态、去重数量、`result_fingerprint` | 复现检索、解释缺口、保存研究证据链 |
+
+### 从问题到研究资产
+
+```mermaid
+flowchart LR
+    Q[自然语言研究问题] --> P[界定范围与检索计划]
+    P --> S[CrossRef / PubMed / arXiv<br/>OpenAlex / Europe PMC]
+    S --> D[强标识符去重]
+    D --> V[字段级引用核验]
+    V --> G[references / cited_by<br/>有界图谱]
+    V --> E[RIS / BibTeX / NBIB<br/>审计 JSON]
+
+    classDef input fill:#111827,color:#fff,stroke:#374151
+    classDef process fill:#eff6ff,color:#1e3a8a,stroke:#60a5fa
+    classDef output fill:#ecfdf5,color:#065f46,stroke:#34d399
+    class Q input
+    class P,S,D,V,G process
+    class E output
+```
+
+上图不是宣传流程，而是本 Skill 的结果边界：检索负责发现候选，核验负责判断元数据
+是否一致，图谱负责描述书目关系，导出负责留下可以再次检查的文件。模型可以协助
+整理计划或摘要级初筛，但不能替代来源查询、标识符核对和人工证据判断。
+
+下面是一个**结构示例**，用于说明交付契约，不代表固定论文结果或实时命中数量：
+
+```json
+{
+  "search_run": {
+    "run_id": "run_<utc-timestamp>",
+    "sources_queried": ["crossref", "pubmed", "openalex"],
+    "sources_skipped": ["semantic_scholar"],
+    "deduplicated_count": 12,
+    "result_fingerprint": "sha256:<fingerprint>"
+  },
+  "record": {
+    "record_id": "publication:doi:<normalized-doi>",
+    "verification_status": "verified",
+    "sources": ["crossref", "openalex"],
+    "conflicts": []
+  },
+  "citation_graph": {
+    "depth_completed": 1,
+    "truncated": false,
+    "edges": [{"relation": "cited_by", "observed_by": ["openalex"]}]
+  }
+}
+```
 
 ### 三层组成
 
