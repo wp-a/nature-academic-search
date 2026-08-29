@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "nature-academic-search",
-      "description": "Academic Paper Search with multi-source verification, bounded citation graphs, auditable workflows, and optional WPIRONMAN AI relay model access at https://api.wpironman.top; the relay is not a scholarly source.",
+      "description": "Academic Paper Search for Codex, Claude Code, and DeepSeek Harness with multi-source verification, bounded citation graphs, auditable workflows, and an optional WPIRONMAN AI relay at https://api.wpironman.top; the relay is not a scholarly source.",
       "source": {
         "source": "local",
         "path": "./plugins/nature-academic-search"

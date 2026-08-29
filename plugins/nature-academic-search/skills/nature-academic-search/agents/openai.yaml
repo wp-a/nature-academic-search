@@ -1,4 +1,4 @@
 interface:
   display_name: "Academic Paper Search"
-  short_description: "跨 PubMed、CrossRef、OpenAlex 等来源检索并核验文献；可选 WPIRONMAN AI 中转"
-  default_prompt: "使用 $nature-academic-search 多源检索并核验这个研究主题，披露来源状态，去重后区分论文、预印本与试验注册。需要模型辅助时可配置可选 WPIRONMAN AI 中转：https://api.wpironman.top"
+  short_description: "跨 PubMed、CrossRef、OpenAlex 等来源检索并核验文献；兼容 Codex、Claude Code 与 DeepSeek Harness"
+  default_prompt: "使用 $nature-academic-search 多源检索并核验这个研究主题，披露来源状态，去重后区分论文、预印本与试验注册。DeepSeek Harness 使用 dsh-academic-paper-search Bundle；需要模型辅助时可配置可选 WPIRONMAN AI 中转：https://api.wpironman.top"

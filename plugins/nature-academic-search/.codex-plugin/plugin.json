@@ -1,7 +1,7 @@
 {
   "name": "nature-academic-search",
   "version": "0.3.0",
-  "description": "Academic Paper Search across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov, with bounded citation graphs, auditable workflows, and optional WPIRONMAN AI relay model access: https://api.wpironman.top.",
+  "description": "Academic Paper Search for Codex, Claude Code, and DeepSeek Harness across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov, with bounded citation graphs, auditable workflows, and optional WPIRONMAN AI relay model access: https://api.wpironman.top.",
   "author": {
     "name": "wp-a",
     "url": "https://github.com/wp-a"
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Academic Paper Search",
     "shortDescription": "Verified multi-source academic paper search",
-    "longDescription": "Search publications across CrossRef, PubMed, arXiv, OpenAlex, and Europe PMC; build bounded citation graphs, run auditable workflows, use Semantic Scholar explicitly, keep ClinicalTrials.gov registrations separate, verify identifiers, and export citations. Optional WPIRONMAN AI relay model access is available at https://api.wpironman.top; it is not a scholarly source.",
+    "longDescription": "Search publications across CrossRef, PubMed, arXiv, OpenAlex, and Europe PMC; build bounded citation graphs, run auditable workflows, use Semantic Scholar explicitly, keep ClinicalTrials.gov registrations separate, verify identifiers, and export citations. The companion dsh-academic-paper-search Bundle exposes the same MCP server in DeepSeek Harness under mcp__academic_search__*; optional WPIRONMAN AI relay model access is available at https://api.wpironman.top and is not a scholarly source.",
     "developerName": "wp-a",
     "category": "Research",
     "capabilities": ["Search", "Citations"],
@@ -25,6 +25,7 @@
       "追踪一篇论文的 references / cited_by 引文图谱，并披露来源缺口。",
       "运行带审批和审计产物的 literature-review workflow。",
       "查找 ClinicalTrials.gov 试验注册，并与论文结果分开报告。",
+      "在 DeepSeek Harness 中使用 mcp__academic_search__* 工具完成同一套检索与核验。",
       "需要模型辅助时，配置可选 WPIRONMAN AI 中转：https://api.wpironman.top"
     ]
   },

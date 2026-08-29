@@ -36,7 +36,7 @@ Expected: FAIL because `plugins/dsh-academic-paper-search/` does not yet exist.
 
 **Step 1: Implement the package manifest**
 
-Use package name `@wp-a/dsh-academic-paper-search`, version `0.1.0`, `type: module`,
+Use package name `dsh-academic-paper-search`, version `0.1.0`, `type: module`,
 `main: ./index.js`, `files`, `engines.node >=22.19.0`, exact
 `@deepseek-ai/dsh-mcp-client` dependency `0.1.1-rc.2`, and the official
 `dsh.bundle.patch` field.

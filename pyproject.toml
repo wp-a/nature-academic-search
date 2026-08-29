@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "nature-academic-search"
 version = "0.3.0"
-description = "Academic Paper Search with verified multi-source literature, citation graphs, and trial workflows"
+description = "Academic Paper Search for Codex, Claude Code, and DeepSeek Harness with verified multi-source literature, citation graphs, and trial workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "wp-a" }]

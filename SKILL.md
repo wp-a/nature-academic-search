@@ -4,7 +4,8 @@ description: >-
   Use when users ask to 找文献、做文献检索、查论文、查临床试验、核验引用、去重文献、设计
   PubMed/MeSH 检索式、追踪上下游引文、解析 DOI/PMID/PMCID/arXiv/OpenAlex/Semantic Scholar/NCT ID，
   或导出 RIS、BibTeX、NBIB、ENW；also use for multi-source academic search,
-  citation verification, citation graphs, trial registration search, and research workflows.
+  citation verification, citation graphs, trial registration search, research workflows,
+  or DeepSeek Harness academic-search MCP setup.
 ---
 
 # Academic Paper Search
@@ -29,6 +30,9 @@ description: >-
 | 批量导出或自动化 | CLI `citation` / `workflow` | 保留 `run.json`、核验状态和人工待处理清单 |
 
 客户端可能给工具名添加 MCP 前缀；工具总数仍为四个，不新增专用图谱工具。
+DeepSeek Harness 使用配套 `dsh-academic-paper-search` Bundle，通过官方
+`@deepseek-ai/dsh-mcp-client` 映射为 `mcp__academic_search__*`；这是同一 MCP
+运行时的客户端适配，不要在 DSH 中重写或假设额外的论文工具。
 
 ## 来源与边界
 

@@ -19,7 +19,7 @@ ClinicalTrials.gov 分流和引用导出。DSH 适配层不复制这些领域逻
 
 ## Architecture
 
-新增 `plugins/dsh-academic-paper-search/` npm 包，包含：
+新增 `plugins/dsh-academic-paper-search/` npm 包（发布名 `dsh-academic-paper-search`），包含：
 
 - `package.json`：声明 `dsh.bundle.patch`、Node 引擎和精确依赖版本；
 - `index.js`：最小合法 Cordis module 元数据入口；

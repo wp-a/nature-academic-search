@@ -4,7 +4,7 @@
 
 - Python 3.10 or newer
 - `uv` or `pipx` for isolated Python applications
-- Codex CLI, Claude Code, or both
+- Codex CLI, Claude Code, DeepSeek Harness, or any combination
 - A contact email for NCBI PubMed requests
 
 ## Install from PyPI
@@ -74,6 +74,32 @@ codex plugin add nature-academic-search@wp-a-academic-tools
 claude plugin marketplace add wp-a/nature-academic-search
 claude plugin install nature-academic-search@wp-a-academic-tools
 ```
+
+## Install as a DeepSeek Harness Bundle
+
+DeepSeek Harness uses the companion npm Bundle and the official
+`@deepseek-ai/dsh-mcp-client` bridge. It keeps the Python MCP server as the only
+search implementation and exposes tools under `mcp__academic_search__*`.
+
+Requirements: Node.js >= 22.19, `pnpm`, and `uvx` from `uv` on `PATH`.
+
+```bash
+npm install --global @deepseek-ai/dsh pnpm
+export PUBMED_EMAIL=researcher@example.com
+dsh plugin --profile web add dsh-academic-paper-search
+dsh web
+```
+
+Before the npm Bundle is published, install the local package from a checkout:
+
+```bash
+dsh plugin --profile web add ./plugins/dsh-academic-paper-search
+```
+
+The DSH package is intentionally a thin adapter. Its `cordis.patch.yml` pins
+`nature-academic-search==0.3.0`, forwards optional source credentials explicitly,
+and enables bounded MCP reconnects. DSH is currently a developer preview, so
+re-check the Bundle after upgrading the harness.
 
 The plugin uses `uvx` to run the package version pinned in `.mcp.json`. Set the
 PubMed contact email in the environment that launches the client:

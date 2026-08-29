@@ -2,14 +2,16 @@
 
 # Academic Paper Search
 
-**让 Codex / Claude Code 完成可复现的文献检索、核验与引用导出，并构建多源引文图谱。**
+**面向中文科研用户的 Academic Paper Search：兼容 Codex、Claude Code 与 DeepSeek Harness 的文献检索 Skill + MCP。**
+
+让三端完成可复现的文献检索、核验与引用导出，并构建多源引文图谱。
 
 从一篇种子论文开始，检索 CrossRef、PubMed、arXiv、OpenAlex 和 Europe PMC，按强标识符去重，
 逐字段核验引用，再沿参考文献和被引用关系扩展研究范围。
 
-安装标识仍为 `nature-academic-search`，现有命令和配置无需迁移。
+安装标识仍为 `nature-academic-search`，现有 Codex / Claude Code 命令和配置无需迁移；DeepSeek Harness 使用配套的 `dsh-academic-paper-search` Bundle。
 
-<sub>中文优先 · Codex + Claude Code 双兼容 · 五个默认论文源 · 可审计输出 · 有界引文图谱</sub>
+<sub>中文优先 · Codex + Claude Code + DeepSeek Harness · 五个默认论文源 · 可审计输出 · 有界引文图谱</sub>
 
 [![CI](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml/badge.svg)](https://github.com/wp-a/nature-academic-search/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![Python](https://img.shields.io/pypi/pyversions/nature-academic-search.svg)](https://pypi.org/project/nature-academic-search/) [![License](https://img.shields.io/github/license/wp-a/nature-academic-search.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/wp-a/nature-academic-search?style=social)](https://github.com/wp-a/nature-academic-search/stargazers)
 
@@ -50,6 +52,28 @@ claude plugin marketplace add wp-a/nature-academic-search
 claude plugin install nature-academic-search@wp-a-academic-tools
 ```
 
+### DeepSeek Harness Bundle
+
+DeepSeek Harness 使用官方 `@deepseek-ai/dsh-mcp-client` 把同一套 Python MCP
+服务桥接为 `mcp__academic_search__*` 工具。需要 Node.js >= 22.19、`pnpm`、`uvx`
+和 PubMed 联系邮箱：
+
+```bash
+npm install --global @deepseek-ai/dsh pnpm
+export PUBMED_EMAIL=researcher@example.com
+dsh plugin --profile web add dsh-academic-paper-search
+dsh web
+```
+
+Bundle 发布前可从本仓库源码试装：
+
+```bash
+dsh plugin --profile web add ./plugins/dsh-academic-paper-search
+```
+
+完整配置、环境变量转发和升级边界见
+[`plugins/dsh-academic-paper-search/README.zh.md`](plugins/dsh-academic-paper-search/README.zh.md)。
+
 ### CLI / 本地 MCP
 
 ```bash
@@ -84,6 +108,9 @@ bash install.sh researcher@example.com
 使用默认五个论文源，按 DOI、PMID、PMCID、arXiv 和 OpenAlex ID 去重；逐源报告成功、失败和限流，
 最后只把已核验记录导出为 RIS。
 ```
+
+在 DeepSeek Harness 中，直接使用相同请求即可；工具会显示为
+`mcp__academic_search__search_papers` 等命名空间名称，结果契约不变。
 
 希望追踪一篇论文的上下游时：
 

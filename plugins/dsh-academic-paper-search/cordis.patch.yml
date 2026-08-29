@@ -1,0 +1,32 @@
+# Academic Paper Search bridge for DeepSeek Harness.
+#
+# `dsh plugin --profile <name> add dsh-academic-paper-search` installs
+# this layer into the selected profile. The bridge delegates domain logic to
+# the existing Python MCP server; it does not duplicate source adapters.
+# Tools are exposed as `mcp__academic_search__<tool>` by the official bridge.
+- insert:
+    - id: academic-search-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: academic_search
+        command: uvx
+        args:
+          - --from
+          - nature-academic-search==0.3.0
+          - nature-academic-search-mcp
+        env:
+          # Empty values are intentional: the Python server treats them as
+          # unset, while explicit values survive DSH's credential scrub.
+          PUBMED_EMAIL: !!js "process.env.PUBMED_EMAIL ?? ''"
+          NCBI_API_KEY: !!js "process.env.NCBI_API_KEY ?? ''"
+          CROSSREF_MAILTO: !!js "process.env.CROSSREF_MAILTO ?? ''"
+          OPENALEX_API_KEY: !!js "process.env.OPENALEX_API_KEY ?? ''"
+          SEMANTIC_SCHOLAR_API_KEY: !!js "process.env.SEMANTIC_SCHOLAR_API_KEY ?? ''"
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false
+        reconnect:
+          enabled: true
+          initialDelayMs: 500
+          maxDelayMs: 30000
+          maxAttempts: 10
