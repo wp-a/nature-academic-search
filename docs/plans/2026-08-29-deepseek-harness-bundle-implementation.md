@@ -1,5 +1,10 @@
 # DeepSeek Harness Bundle Implementation Plan
 
+> Historical implementation note: the Bundle was initially created under the
+> Python repository and has since moved to the standalone
+> [`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)
+> repository. The path references below describe the original scaffold.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Publish-ready npm Bundle metadata and documentation that installs the existing Academic Paper Search MCP server into DeepSeek Harness without duplicating search logic.

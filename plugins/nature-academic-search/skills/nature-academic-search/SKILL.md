@@ -30,9 +30,11 @@ description: >-
 | 批量导出或自动化 | CLI `citation` / `workflow` | 保留 `run.json`、核验状态和人工待处理清单 |
 
 客户端可能给工具名添加 MCP 前缀；工具总数仍为四个，不新增专用图谱工具。
-DeepSeek Harness 使用配套 `dsh-academic-paper-search` Bundle，通过官方
-`@deepseek-ai/dsh-mcp-client` 映射为 `mcp__academic_search__*`；这是同一 MCP
-运行时的客户端适配，不要在 DSH 中重写或假设额外的论文工具。
+DeepSeek Harness 使用独立的
+[`dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)
+Bundle，通过官方 `@deepseek-ai/dsh-mcp-client` 映射为
+`mcp__academic_search__*`；这是同一 MCP 运行时的客户端适配，不要在 DSH
+中重写或假设额外的论文工具。
 
 ## 来源与边界
 

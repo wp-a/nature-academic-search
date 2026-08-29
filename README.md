@@ -65,14 +65,15 @@ dsh plugin --profile web add dsh-academic-paper-search
 dsh web
 ```
 
-Bundle 发布前可从本仓库源码试装：
+Bundle 发布前可从独立仓库源码试装：
 
 ```bash
-dsh plugin --profile web add ./plugins/dsh-academic-paper-search
+git clone https://github.com/wp-a/dsh-academic-paper-search.git
+dsh plugin --profile web add ./dsh-academic-paper-search
 ```
 
-完整配置、环境变量转发和升级边界见
-[`plugins/dsh-academic-paper-search/README.zh.md`](plugins/dsh-academic-paper-search/README.zh.md)。
+Bundle 的独立仓库、完整配置、环境变量转发和升级边界见
+[`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)。
 
 ### CLI / 本地 MCP
 

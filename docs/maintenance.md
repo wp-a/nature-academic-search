@@ -50,12 +50,13 @@ PyPI is a low-maintenance runtime distribution for the pinned `uvx` plugin
 command. Publish only when code, fixes, embedded skill behavior, or required
 metadata changes. Do not create a second package for the display brand.
 
-The DeepSeek Harness integration is a separate npm Bundle named
-`dsh-academic-paper-search`. It is intentionally a thin adapter over the PyPI
-MCP runtime and the official `@deepseek-ai/dsh-mcp-client`; keep those contracts
-in sync:
+The DeepSeek Harness integration lives in the standalone repository
+[`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)
+and is published as the npm Bundle `dsh-academic-paper-search`. It is
+intentionally a thin adapter over the PyPI MCP runtime and the official
+`@deepseek-ai/dsh-mcp-client`; keep those contracts in sync:
 
-- Update `plugins/dsh-academic-paper-search/cordis.patch.yml` when the pinned
+- Update `cordis.patch.yml` in the standalone Bundle repository when the pinned
   `nature-academic-search==...` runtime changes.
 - Keep the Bundle's dependency on the tested `@deepseek-ai/dsh-mcp-client`
   release; re-run the Bundle checks after upgrading DSH.
@@ -89,9 +90,9 @@ VERSION=x.y.z
 7. Record incompatibilities or release-specific migration notes in the GitHub
    release body rather than adding a changelog file to the skill.
 
-For a Bundle-only release, run the npm checks from
-`plugins/dsh-academic-paper-search`, publish the package from that directory,
-and record the supported PyPI pin and DSH version in the release notes.
+For a Bundle-only release, run the npm checks from the standalone repository,
+publish the package from its root, and record the supported PyPI pin and DSH
+version in the release notes.
 
 ## Routine maintenance
 

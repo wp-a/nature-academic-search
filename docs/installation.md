@@ -90,10 +90,12 @@ dsh plugin --profile web add dsh-academic-paper-search
 dsh web
 ```
 
-Before the npm Bundle is published, install the local package from a checkout:
+Before the npm Bundle is published, install the package from its standalone
+repository checkout:
 
 ```bash
-dsh plugin --profile web add ./plugins/dsh-academic-paper-search
+git clone https://github.com/wp-a/dsh-academic-paper-search.git
+dsh plugin --profile web add ./dsh-academic-paper-search
 ```
 
 The DSH package is intentionally a thin adapter. Its `cordis.patch.yml` pins

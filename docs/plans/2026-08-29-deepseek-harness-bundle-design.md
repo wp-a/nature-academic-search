@@ -1,5 +1,10 @@
 # DeepSeek Harness Bundle Design
 
+> Historical design note: the Bundle was first scaffolded inside the Python
+> repository and is now maintained in the standalone
+> [`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)
+> repository.
+
 ## Goal
 
 为 `nature-academic-search` 增加一个可通过 `dsh plugin --profile <name> add`
