@@ -6,7 +6,29 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-SCORE_VERSION = "1"
+SCORE_VERSION = "2"
+CJK_CHAR = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+CJK_RUN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+")
+LATIN_TOKEN = re.compile(r"[a-z][a-z0-9_+-]*|\d+(?:\.\d+)+", flags=re.IGNORECASE)
+
+
+def analyze_query(query: str) -> dict[str, Any]:
+    """Split a mixed Chinese/English query into ranking terms and agent hints."""
+    text = query.strip()
+    latin_terms = [token.casefold() for token in LATIN_TOKEN.findall(text)]
+    cjk_terms: list[str] = []
+    for run in CJK_RUN.findall(text):
+        if len(run) == 1:
+            cjk_terms.append(run)
+            continue
+        cjk_terms.extend(run[index : index + 2] for index in range(len(run) - 1))
+    contains_cjk = bool(cjk_terms)
+    return {
+        "contains_cjk": contains_cjk,
+        "latin_terms": list(dict.fromkeys(latin_terms)),
+        "cjk_terms": list(dict.fromkeys(cjk_terms)),
+        "mesh_required": contains_cjk,
+    }
 
 
 def rank_records(
@@ -19,7 +41,7 @@ def rank_records(
         return copied, {"mode": "none", "score_version": "none"}
 
     query_text = query.strip().casefold()
-    terms = _tokens(query_text)
+    terms = _tokens(query)
     ranked: list[tuple[float, str, dict[str, Any]]] = []
     for record in copied:
         score, reasons = _score_record(record, query_text, terms)
@@ -65,8 +87,16 @@ def _score_record(
 
 
 def _tokens(value: str) -> list[str]:
-    tokens = [token for token in re.split(r"[^\w]+", value, flags=re.UNICODE) if token]
-    return list(dict.fromkeys(tokens))
+    analysis = analyze_query(value)
+    remainder = CJK_CHAR.sub(" ", value)
+    latin_words = [
+        token.casefold()
+        for token in re.split(r"[^\w]+", remainder, flags=re.UNICODE)
+        if token and not CJK_CHAR.search(token)
+    ]
+    return list(
+        dict.fromkeys([*latin_words, *analysis["latin_terms"], *analysis["cjk_terms"]])
+    )
 
 
 def _identifier_matches(record: Mapping[str, Any], query: str) -> bool:

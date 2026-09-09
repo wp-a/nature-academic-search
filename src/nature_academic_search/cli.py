@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from argparse import Namespace
 from collections.abc import Sequence
+from typing import Any
 
 from . import __version__
 
@@ -19,6 +21,42 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("serve", help="Run the MCP server over stdio")
+    search_parser = subparsers.add_parser(
+        "search",
+        help="Search publications or trial registrations",
+    )
+    search_parser.add_argument("query", help="Search keywords or query string")
+    search_parser.add_argument("--rows", type=int, default=5, help="Results per source")
+    search_parser.add_argument(
+        "--sources",
+        help="Comma-separated source names; defaults follow entity type",
+    )
+    search_parser.add_argument(
+        "--entity-type",
+        default="publication",
+        choices=("publication", "trial"),
+    )
+    search_parser.add_argument(
+        "--ranking",
+        default="relevance",
+        choices=("relevance", "none"),
+    )
+    search_parser.add_argument(
+        "--enrich",
+        help="Comma-separated enrichers, currently semantic_scholar",
+    )
+    verify_parser = subparsers.add_parser(
+        "verify",
+        help="Resolve an identifier and compare expected metadata",
+    )
+    verify_parser.add_argument("id", help="DOI, PMID, PMCID, arXiv, OpenAlex, NCT, or URL")
+    verify_parser.add_argument("--id-type", default="auto")
+    verify_parser.add_argument("--expected-title")
+    verify_parser.add_argument("--expected-year", type=int)
+    verify_parser.add_argument("--expected-journal")
+    verify_parser.add_argument("--expected-authors", help="Comma-separated author names")
+    verify_parser.add_argument("--expected-doi")
+    verify_parser.add_argument("--expected-pmid")
     subparsers.add_parser(
         "preflight",
         help="Check academic source connectivity",
@@ -74,6 +112,29 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         server_main()
         return 0
+    if args.command == "search":
+        from .server import search_papers
+
+        return _print_json(
+            search_papers(
+                args.query,
+                sources=_csv(args.sources),
+                rows=args.rows,
+                entity_type=args.entity_type,
+                enrich=_csv(args.enrich),
+                ranking=args.ranking,
+            )
+        )
+    if args.command == "verify":
+        from .server import get_paper_by_id
+
+        return _print_json(
+            get_paper_by_id(
+                args.id,
+                id_type=args.id_type,
+                expected=_expected_metadata(args) or None,
+            )
+        )
     if args.command == "workflow" and args.workflow_command == "run":
         from .relay import OpenAICompatibleRelay
         from .workflow import WorkflowRunner, WorkflowSpec
@@ -90,4 +151,41 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
+    return 0
+
+
+def _csv(value: str | None) -> list[str] | None:
+    if not value:
+        return None
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    return items or None
+
+
+def _expected_metadata(args: Namespace) -> dict[str, Any]:
+    expected: dict[str, Any] = {}
+    if args.expected_title:
+        expected["title"] = args.expected_title
+    if args.expected_year is not None:
+        expected["year"] = args.expected_year
+    if args.expected_journal:
+        expected["journal"] = args.expected_journal
+    if args.expected_authors:
+        expected["authors"] = [
+            item.strip() for item in args.expected_authors.split(",") if item.strip()
+        ]
+    if args.expected_doi:
+        expected["doi"] = args.expected_doi
+    if args.expected_pmid:
+        expected["pmid"] = args.expected_pmid
+    return expected
+
+
+def _print_json(payload: str) -> int:
+    print(payload)
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return 1
+    if isinstance(data, dict) and data.get("error"):
+        return 1
     return 0

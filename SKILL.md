@@ -35,6 +35,21 @@ DeepSeek Harness 使用独立的
 Bundle，通过官方 `@deepseek-ai/dsh-mcp-client` 映射为
 `mcp__academic_search__*`；这是同一 MCP 运行时的客户端适配，不要在 DSH
 中重写或假设额外的论文工具。
+CLI 可用 `nature-academic-search search` / `verify` 得到同一份 JSON。
+
+## 最小成功路径
+
+1. 中文问题先 `lookup_mesh` 或写出英文检索式；`search_run.query_analysis.mesh_required`
+   为 true 时不得跳过。不要把中文整句直接当已核验检索。
+2. `search_papers`（建议 `ranking="relevance"`）；必须报告
+   `sources_queried` / `sources_succeeded` / `sources_skipped` / `errors`。
+3. 对拟引用记录（通常先 3 条）调用 `get_paper_by_id` + `expected`。
+4. 按 `verified` / `mismatch` / `not_found` / `manual_needed` 分组交付。
+
+正确：`lookup_mesh("medical education")` →
+`search_papers("generative AI medical education", ranking="relevance")` →
+对 DOI 做 `expected` 核验。
+错误：只调用 `search_papers("生成式AI医学教育")`，并把返回题名当作已核验参考文献。
 
 ## 来源与边界
 
@@ -74,7 +89,7 @@ Bundle，通过官方 `@deepseek-ai/dsh-mcp-client` 映射为
 ## 标准执行顺序
 
 1. 明确主题、人群/系统、干预、结局、日期、文献类型、预印本政策和实体类型。
-2. 生物医学问题先用 `lookup_mesh` 核验主题词，再组合题名/摘要自由词。
+2. 生物医学问题先用 `lookup_mesh` 核验主题词，再组合题名/摘要自由词。含中文的问题必须先得到 MeSH 或英文检索式。
 3. 调用 `search_papers`；保存原查询、日期、请求源、结果数量和 `search_run`。
 4. 按 DOI、PMID、PMCID、arXiv、OpenAlex、Semantic Scholar 或 NCT 强标识符去重；弱题名匹配保留冲突。
 5. 对拟引用记录调用 `get_paper_by_id` + `expected`，逐项核对题名、首位作者、年份、期刊和标识符。
@@ -107,6 +122,7 @@ export ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http
 
 统一 `filters` 支持日期、语言、作者、文献类型和强标识符；`ranking` 可设为 `relevance` 或 `none`。
 相关性排序会写入 `ranking_score`、`ranking_reasons` 和 `score_version`，只表示检索相关性，不表示证据质量。
+含中文的查询会在 `query_analysis` 中给出 `contains_cjk`、`latin_terms`、`cjk_terms` 和 `mesh_required`。
 
 详细查询构建、来源分层、引用文件和工作流见：
 

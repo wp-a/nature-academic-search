@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from nature_academic_search.discovery import (
+    analyze_query,
     apply_post_filters,
     normalize_filters,
     rank_records,
@@ -88,7 +89,7 @@ def test_rank_records_returns_fixed_version_scores_reasons_and_tie_breaker() -> 
 
     ranked, metadata = rank_records(records, "AI safety", mode="relevance")
 
-    assert metadata == {"mode": "relevance", "score_version": "1"}
+    assert metadata == {"mode": "relevance", "score_version": "2"}
     assert [record["record_id"] for record in ranked] == [
         "publication:doi:10.1/b",
         "publication:doi:10.1/a",
@@ -107,6 +108,49 @@ def test_rank_records_exact_identifier_match_is_strong_signal() -> None:
 
     assert ranked[0]["record_id"] == "publication:doi:10.1000/target"
     assert any("identifier" in reason for reason in ranked[0]["ranking_reasons"])
+
+
+def test_analyze_query_flags_chinese_and_keeps_latin_terms() -> None:
+    analysis = analyze_query("生成式 AI 医学教育")
+
+    assert analysis["contains_cjk"] is True
+    assert analysis["mesh_required"] is True
+    assert "ai" in analysis["latin_terms"]
+    assert "医学" in analysis["cjk_terms"]
+    assert "教育" in analysis["cjk_terms"]
+
+
+def test_rank_records_uses_latin_terms_from_chinese_query() -> None:
+    records = [
+        {
+            "record_id": "publication:doi:10.1/ai",
+            "title": "Generative AI in medical education",
+            "abstract": "A review",
+        },
+        {
+            "record_id": "publication:doi:10.1/other",
+            "title": "Unrelated chemistry",
+            "abstract": "synthesis",
+        },
+    ]
+
+    ranked, metadata = rank_records(records, "生成式 AI 医学教育", mode="relevance")
+
+    assert metadata["score_version"] == "2"
+    assert ranked[0]["record_id"] == "publication:doi:10.1/ai"
+    assert any("ai" in reason for reason in ranked[0]["ranking_reasons"])
+
+
+def test_rank_records_matches_chinese_bigrams_in_title() -> None:
+    records = [
+        {"record_id": "a", "title": "生成式人工智能与医学教育", "abstract": ""},
+        {"record_id": "b", "title": "无关标题", "abstract": ""},
+    ]
+
+    ranked, _ = rank_records(records, "医学教育", mode="relevance")
+
+    assert ranked[0]["record_id"] == "a"
+    assert any("医学" in reason or "教育" in reason for reason in ranked[0]["ranking_reasons"])
 
 
 def test_rank_records_none_preserves_input_without_scores() -> None:

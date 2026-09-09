@@ -9,7 +9,13 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from .discovery import apply_post_filters, normalize_filters, rank_records, translate_filters
+from .discovery import (
+    analyze_query,
+    apply_post_filters,
+    normalize_filters,
+    rank_records,
+    translate_filters,
+)
 from .provenance import result_fingerprint, stable_record_id
 from .sources.registry import (
     DEFAULT_PUBLICATION_SOURCES,
@@ -181,6 +187,7 @@ async def search_all(
         "filtered_out_count": filtered_out_count,
         "filters": normalized_filters,
         "ranking": ranking_metadata,
+        "query_analysis": analyze_query(query),
         "source_translation": {
             source: translate_filters(source, normalized_filters)
             for source in selected_sources

@@ -198,6 +198,8 @@ def test_search_all_adds_stable_record_ids_and_run_manifest() -> None:
     run = result["search_run"]
     assert run["schema_version"] == "1"
     assert run["query"] == "prime editing"
+    assert run["query_analysis"]["contains_cjk"] is False
+    assert run["query_analysis"]["mesh_required"] is False
     assert run["entity_type"] == "publication"
     assert run["requested_sources"] == ["crossref", "pubmed"]
     assert run["enrichers"] == ["semantic_scholar"]
@@ -291,7 +293,7 @@ def test_search_all_applies_filters_translates_source_kwargs_and_ranks_results()
     }
     assert result["search_run"]["ranking"] == {
         "mode": "relevance",
-        "score_version": "1",
+        "score_version": "2",
     }
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -27,7 +28,7 @@ def test_module_help_lists_supported_commands() -> None:
     completed = run_module("--help")
 
     assert completed.returncode == 0, completed.stderr
-    for command in ("serve", "preflight", "citation", "install", "workflow"):
+    for command in ("serve", "search", "verify", "preflight", "citation", "install", "workflow"):
         assert command in completed.stdout
 
 
@@ -165,6 +166,68 @@ def test_clinicaltrials_version_extraction_is_optional() -> None:
 
     assert _extract_clinicaltrials_version(body, {}) == "2026-07-20T00:00:00Z"
     assert _extract_clinicaltrials_version(b"{}", {}) is None
+
+
+def test_cli_search_help_documents_rows_and_ranking() -> None:
+    completed = run_module("search", "--help")
+
+    assert completed.returncode == 0, completed.stderr
+    assert "--rows" in completed.stdout
+    assert "relevance" in completed.stdout
+
+
+def test_cli_search_prints_tool_json_without_network() -> None:
+    from nature_academic_search.cli import main
+
+    payload = json.dumps(
+        {
+            "search_run": {
+                "query": "generative AI",
+                "query_analysis": {"contains_cjk": False, "mesh_required": False},
+            },
+            "results": [],
+        },
+        ensure_ascii=False,
+    )
+    with patch(
+        "nature_academic_search.server.search_papers",
+        return_value=payload,
+    ) as search_papers:
+        status = main(["search", "generative AI", "--rows", "3"])
+
+    assert status == 0
+    search_papers.assert_called_once()
+    assert search_papers.call_args.args[0] == "generative AI"
+    assert search_papers.call_args.kwargs["rows"] == 3
+    assert search_papers.call_args.kwargs["ranking"] == "relevance"
+
+
+def test_cli_verify_forwards_expected_metadata() -> None:
+    from nature_academic_search.cli import main
+
+    payload = json.dumps({"verification": {"status": "verified"}}, ensure_ascii=False)
+    with patch(
+        "nature_academic_search.server.get_paper_by_id",
+        return_value=payload,
+    ) as get_paper_by_id:
+        status = main(
+            [
+                "verify",
+                "10.1000/example",
+                "--expected-title",
+                "Example paper",
+                "--expected-year",
+                "2024",
+            ]
+        )
+
+    assert status == 0
+    get_paper_by_id.assert_called_once()
+    assert get_paper_by_id.call_args.args[0] == "10.1000/example"
+    assert get_paper_by_id.call_args.kwargs["expected"] == {
+        "title": "Example paper",
+        "year": 2024,
+    }
 
 
 def test_citation_preflight_uses_the_unified_skip_aware_reporter() -> None:

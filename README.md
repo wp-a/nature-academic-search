@@ -182,6 +182,8 @@ uv tool install nature-academic-search
 export PUBMED_EMAIL=researcher@example.com
 nature-academic-search install --client both --email researcher@example.com
 nature-academic-search preflight
+nature-academic-search search "generative AI medical education" --rows 5
+nature-academic-search verify 10.1000/example --expected-title "Example paper"
 ```
 
 也可以使用 `pipx install nature-academic-search`，或从源码安装：
