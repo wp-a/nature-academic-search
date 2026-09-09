@@ -9,6 +9,12 @@
 
 ## Install from PyPI
 
+Use `0.3.1` or newer for CLI `search` / `verify`, automatic workflow verification,
+and screening-aware export. The package and this repository's plugin runtime pin
+are synchronized at `0.3.1`. PyPI `0.3.0` does not include the two CLI commands or
+the workflow fixes. `uv tool upgrade nature-academic-search` upgrades the CLI;
+plugin users must also update the plugin to change its pinned runtime.
+
 ```bash
 uv tool install nature-academic-search
 nature-academic-search install \
@@ -103,7 +109,9 @@ The DSH package is intentionally a thin adapter. Its `cordis.patch.yml` pins
 and enables bounded MCP reconnects. DSH is currently a developer preview, so
 re-check the Bundle after upgrading the harness.
 
-The plugin uses `uvx` to run the package version pinned in `.mcp.json`. Set the
+The Codex / Claude plugin uses `uvx` to run the package version pinned in `.mcp.json`.
+The standalone DSH Bundle manages its runtime pin independently; check its repository
+before assuming it has adopted Python `0.3.1`. Set the
 PubMed contact email in the environment that launches the client:
 
 ```bash
@@ -120,8 +128,10 @@ export SEMANTIC_SCHOLAR_API_KEY=
 
 ## 可选工作流模型层
 
-本地 workflow runner 不需要模型即可完成检索、核验和导出。若要启用计划或初筛辅助，可配置
-OpenAI-compatible 中转站；密钥只放在运行环境，不要写入 YAML：
+`0.3.1` 起，workflow 默认按标识符回查核验。无需模型时使用
+`steps: [plan, search, verify, export]`；若启用 `screen`，导出还要求筛选为 `include`，
+模型未配置或失败的待处理记录不会导出。`plan.json` 由 YAML 本地生成。
+需要摘要级初筛辅助时可配置 OpenAI-compatible 中转站；密钥只放在运行环境，不要写入 YAML：
 
 > **模型入口：** [进入 WPIRONMAN AI 中转控制台](https://api.wpironman.top)
 
@@ -136,7 +146,8 @@ Responses 使用普通 HTTP；中转站不提供 Responses WebSocket 时无需�
 标题、摘要、标识符和批准的元数据，全文需要在 workflow 中显式设置
 `privacy.allow_full_text: true`。网关不可用只会跳过模型步骤，不会阻断学术源检索。
 
-Empty values are valid. OpenAlex remains available anonymously. A missing
+The runtime accepts empty optional credentials; upstream access and quotas still
+depend on the source's current requirements. A missing
 Semantic Scholar key causes its credentialed preflight check to be skipped; it
 does not disable the five default publication sources. Never commit real key
 values to `.mcp.json`, TOML, or documentation snippets.

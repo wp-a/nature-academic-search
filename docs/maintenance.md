@@ -17,11 +17,12 @@ Run from the repository root:
 ```bash
 python -m pip install -e ".[test]"
 python scripts/sync_skill.py --check
-python -m ruff check src tests
+python -m ruff check src tests scripts/check_wheel.py
 python -m pytest
 python -m pytest mcp-server/tests
 python -m build
 twine check dist/*
+python scripts/check_wheel.py dist/nature_academic_search-0.3.1-py3-none-any.whl
 claude plugin validate --strict plugins/nature-academic-search
 ```
 
@@ -31,6 +32,20 @@ from `skill-creator` when either manifest or `SKILL.md` changes.
 The canonical skill is `SKILL.md`. After changing it or its packaged references,
 run `python scripts/sync_skill.py`, then rerun `--check`; do not hand-maintain a
 different Claude/Codex plugin copy.
+
+The wheel checker accepts exactly one wheel and installs that artifact and its
+dependencies into a temporary virtual environment. It checks dependencies and
+runs outside the repository without `PYTHONPATH` or personal source/model
+configuration. It checks the installed CLI version, `search`/`verify` commands
+and JSON error behavior, packaged skill assets, and the four MCP tools through a
+real stdio session. An offline workflow stubs only the Crossref request boundary
+and must search, resolve, verify and export one record through the installed
+runtime. Temporary files are removed when the check exits. Source connectivity
+remains a separate network smoke gate.
+
+Both CI and publishing must pass this installed-wheel check before uploading
+build artifacts. Publishing also reruns the full package and legacy suites; a
+release event must not bypass the tests used for pull requests.
 
 ## Trusted Publisher setup
 
@@ -95,6 +110,16 @@ publish the package from its root, and record the supported PyPI pin and DSH
 version in the release notes.
 
 ## Routine maintenance
+
+- Every release must install the built wheel into a clean temporary environment
+  and invoke the actual CLI and MCP stdio entry points outside the source checkout.
+  `scripts/check_wheel.py` performs this gate in CI and before publishing; metadata
+  checks and editable-source tests alone do not prove the distributed commands work.
+- Workflow `verify` uses the default identifier resolver. With a `screen` step,
+  export requires both an allowed verification status and `include`; missing,
+  invalid, pending or excluded decisions stay out of RIS. Without `screen`, export
+  uses verification alone. Trial registrations remain in JSON. Preserve these
+  behaviors in regressions and the bundled skill; include `exported_count` in reports.
 
 - Review monthly Dependabot updates for Python and GitHub Actions.
 - Investigate scheduled network-smoke failures by source before changing retry

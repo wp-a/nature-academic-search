@@ -9,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_VERSION = "0.3.0"
+RELEASE_VERSION = "0.3.1"
 DISPLAY_BRAND = "Academic Paper Search"
 TECHNICAL_ID = "nature-academic-search"
 

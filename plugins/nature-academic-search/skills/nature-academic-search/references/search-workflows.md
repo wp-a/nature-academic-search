@@ -74,8 +74,8 @@ Crossref/Europe PMC 只提供 references 的源不能被解释为“没有 incom
 
 ```yaml
 workflow: literature-review
-question: "生成式 AI 在医学教育中的应用与风险"
-steps: [plan, search, verify, screen, export]
+question: "generative AI medical education"
+steps: [plan, search, verify, export]
 search:
   entity_type: publication
   sources: [crossref, pubmed, arxiv, openalex, europe_pmc]
@@ -84,14 +84,29 @@ outputs: [run.json, results.json, verification.json, screening.csv, references.r
 ```
 
 `nature-academic-search workflow run --file review.yml --output artifacts` 只生成 `plan.json`；
-加 `--approve` 才会访问学术源。默认导出仅纳入 `verified`，其他状态进入单独 artifact。完整运行
-会保存 workflow run ID、审批边界、source status、模型步骤状态和错误，不保存任何凭据。
+加 `--approve` 才会访问学术源。`question` 直接作为搜索查询，先将中文主题拆成英文关键词；
+没有独立的 `search.query` 字段。`0.3.1` 起，`verify` 默认按候选强标识符回查，比较已有字段，
+区分 `verified`、`mismatch`、`not_found` 与 `manual_needed`；来源失败不会当成论文不存在。
+`fields` 列出实际比较的字段，`lookup_id` / `lookup_id_type` 记录回查入口。合并记录中某些
+附加 ID 无法由该来源提供时，列入 `unchecked_identifiers`，不影响已经匹配的书目字段；
+但未匹配的 DOI / PMID 不写入 RIS。缺失主要回查标识符仍需人工处理。搜索作者列表末尾
+的 `et al.` 是截断提示，不作为作者核验或导出。
+
+以上流程不需要模型，默认导出仅纳入 `verified` 论文。需要摘要级筛选时使用
+`steps: [plan, search, verify, screen, export]`，并配置模型入口。有 `screen` 时还要求明确的
+`include`；`exclude`、`pending_manual`、缺失或无效决定均不导出。模型不可用时保留待人工
+处理项，不会绕过筛选。省略 `verify` 不会自动核验，省略 `screen` 才是仅按核验导出的路径。
+`screening.csv` 为输出记录，重跑不会导入手工修改。trial 保留在 JSON，不作为论文 RIS 导出。
+
+完整运行保存 workflow run ID、审批边界、source status、模型步骤状态、错误和
+`exported_count`。每次独立检索使用新输出目录，保留原始候选和未导出原因。
 
 WPIRONMAN 通过 OpenAI-compatible 普通 HTTP 作为可选模型层：设置
 `ACADEMIC_SEARCH_LLM_BASE_URL`、`ACADEMIC_SEARCH_LLM_API_KEY`、`ACADEMIC_SEARCH_LLM_MODEL`、
-`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`。它只用于 plan/screen 等辅助步骤，不替代学术源；
-默认仅传标题、摘要、标识符和用户批准的元数据。网关不可用或 JSON 无效时最多重试一次，随后标记
-模型步骤 `skipped`，检索、核验和导出继续。全文只有在 `privacy.allow_full_text: true` 时上传。
+`ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http`。当前 runner 只在 `screen` 步骤调用模型，
+`plan.json` 根据 YAML 本地生成；模型不替代学术源。默认仅传标题、摘要、标识符和用户批准的
+元数据。模型步骤失败标记为 `skipped`，检索和核验继续，待人工筛选项不导出。
+全文只有在 `privacy.allow_full_text: true` 时允许上传。
 
 模型入口：[WPIRONMAN AI 中转控制台](https://api.wpironman.top)。
 

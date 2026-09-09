@@ -35,7 +35,8 @@ DeepSeek Harness 使用独立的
 Bundle，通过官方 `@deepseek-ai/dsh-mcp-client` 映射为
 `mcp__academic_search__*`；这是同一 MCP 运行时的客户端适配，不要在 DSH
 中重写或假设额外的论文工具。
-CLI 可用 `nature-academic-search search` / `verify` 得到同一份 JSON。
+CLI 从 `0.3.1` 起可用 `nature-academic-search search` / `verify` 得到同一份 JSON；
+旧版客户端先检查 `--help`，不要假设已安装包包含新命令。
 
 ## 最小成功路径
 
@@ -98,9 +99,19 @@ CLI 可用 `nature-academic-search search` / `verify` 得到同一份 JSON。
 8. 批量任务使用 workflow，先生成 `plan.json`，获得批准后再检索，并保存 `run.json`、`results.json`、
    `verification.json`、`screening.csv`、`references.ris` 和可选 `graph.json`。
 
+Workflow 从 `0.3.1` 起默认按标识符回查并核验候选元数据。省略 `verify` 不会把候选视为已核验。
+核验范围见 `fields`、`lookup_id` / `lookup_id_type`；来源无法提供的附加 ID 列入
+`unchecked_identifiers`，不能称为已核验，RIS 不写入未匹配的 DOI / PMID。作者截断标记
+`et al.` 不参与作者比较。原始候选和未核验附加 ID 保留在 `results.json`。
+导出默认要求 `verified`；有 `screen` 时还要求筛选为 `include`，`exclude`、`pending_manual`、
+缺失/无效决定和模型失败的待处理记录均不导出。无需模型筛选时使用
+`steps: [plan, search, verify, export]`。保留人工待处理记录，报告 `exported_count`；
+trial 只保留注册数据，不写成论文 RIS。`citation` CLI 只下载/转换格式，不自动做 `expected` 核验。
+
 ## WPIRONMAN 中转
 
-WPIRONMAN 是可选的 OpenAI-compatible 模型入口，适合 workflow 的 plan、摘要级 screen 或规则整理；
+WPIRONMAN 是可选的 OpenAI-compatible 模型入口，当前 runner 用于摘要级 `screen`；
+`plan.json` 根据 YAML 本地生成，研究计划或规则可先在客户端整理。
 它不是论文来源、数据库、引用验证器，也不替代 Crossref、PubMed、OpenAlex、Europe PMC 或 Semantic Scholar。
 
 ```bash
@@ -111,8 +122,8 @@ export ACADEMIC_SEARCH_LLM_PROTOCOL=responses_http
 ```
 
 默认只发送标题、摘要、标识符和获准元数据；全文必须显式设置 `privacy.allow_full_text: true`。
-密钥不得进入日志、manifest 或 prompt artifact。中转超时、限流或返回坏 JSON 时，最多重试一次，
-随后将模型步骤标记为 `skipped`，学术检索、核验和导出继续。
+密钥不得进入日志、manifest 或 prompt artifact。中转超时、限流或返回坏 JSON 时，
+失败的模型步骤标记为 `skipped`，学术检索、核验和审计继续；待人工筛选记录不进入 RIS。
 
 ## 结果契约
 

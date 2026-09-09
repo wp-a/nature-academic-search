@@ -1,6 +1,6 @@
 {
   "name": "nature-academic-search",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Academic Paper Search for Codex, Claude Code, and DeepSeek Harness across CrossRef, PubMed, arXiv, OpenAlex, Europe PMC, Semantic Scholar, and ClinicalTrials.gov, with bounded citation graphs, auditable workflows, and optional WPIRONMAN AI relay model access: https://api.wpironman.top.",
   "author": {
     "name": "wp-a",

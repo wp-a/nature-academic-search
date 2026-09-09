@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .errors import DataSourceError
 from .graph import DEFAULT_RELATION_SOURCES, build_citation_graph
 from .provenance import stable_record_id
 from .search import search_all
@@ -142,7 +143,7 @@ class WorkflowRunner:
     ) -> None:
         self.provider = provider
         self.search_fn = search_fn
-        self.lookup_fn = lookup_fn
+        self.lookup_fn = lookup_fn if lookup_fn is not None else _lookup_record
         self.graph_fn = graph_fn
 
     def run(
@@ -203,13 +204,15 @@ class WorkflowRunner:
             records,
             verification,
             workflow.verification.get("include_statuses", ["verified"]),
+            screening if "screen" in workflow.steps else None,
         )
+        exported_count = len(included) if "export" in workflow.steps else 0
         if "export" in workflow.steps:
             self._write_text(destination, "references.ris", _records_to_ris(included))
             self._write_text(
                 destination,
                 "report.md",
-                _report(workflow, records, verification, screening, model_steps),
+                _report(workflow, records, verification, screening, model_steps, exported_count),
             )
 
         artifacts = ["plan.json", "run.json"]
@@ -232,6 +235,7 @@ class WorkflowRunner:
             "search_run": _safe_payload(search_result.get("search_run") or {}),
             "artifacts": list(dict.fromkeys(artifacts)),
             "model_steps": model_steps,
+            "exported_count": exported_count,
             "errors": errors or None,
         }
         self._write_json(destination, "run.json", manifest)
@@ -240,6 +244,7 @@ class WorkflowRunner:
             "run_id": run_id,
             "artifacts": manifest["artifacts"],
             "model_steps": model_steps,
+            "exported_count": exported_count,
             "errors": errors or None,
         }
 
@@ -277,21 +282,36 @@ class WorkflowRunner:
         output: list[dict[str, Any]] = []
         for record in records:
             identifier, id_type = _record_identifier(record)
-            if not identifier or self.lookup_fn is None:
+            if not identifier:
                 output.append(
                     {
                         "record_id": record.get("record_id"),
                         "status": "manual_needed",
-                        "method": "workflow_lookup_not_configured",
+                        "method": "workflow_missing_identifier",
                     }
                 )
                 continue
             try:
                 actual = _resolve(self.lookup_fn(identifier, id_type))
-                checked = verify_record(_verification_expected(record), actual)
+                expected = _verification_expected(record)
+                unchecked = _unchecked_identifiers(expected, actual, id_type)
+                checked = verify_record(
+                    {field: value for field, value in expected.items() if field not in unchecked},
+                    actual,
+                )
+                checked["unchecked_identifiers"] = unchecked
+                checked["lookup_id"] = identifier
+                checked["lookup_id_type"] = id_type
                 checked["record_id"] = record.get("record_id")
                 output.append(checked)
             except Exception as exc:
+                if isinstance(exc, DataSourceError) and re.search(
+                    r"\bnot found\b|\bHTTP 404\b", str(exc), re.IGNORECASE
+                ):
+                    checked = verify_record(_verification_expected(record), None)
+                    checked["record_id"] = record.get("record_id")
+                    output.append(checked)
+                    continue
                 errors.append({"step": "verify", "error": _safe_error(exc)})
                 output.append(
                     {
@@ -431,6 +451,13 @@ class WorkflowRunner:
             writer.writerows(rows)
 
 
+def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
+    """Load the existing MCP identifier resolver only when verification runs."""
+    from .server import _lookup_record as resolve_identifier
+
+    return resolve_identifier(identifier, id_type)
+
+
 def _resolve(value: Any) -> Any:
     if inspect.isawaitable(value):
         return asyncio.run(value)
@@ -490,7 +517,26 @@ def _verification_expected(record: Mapping[str, Any]) -> dict[str, Any]:
     }
     if record.get("entity_type") == "trial" and record.get("overall_status"):
         expected["status"] = record["overall_status"]
+    authors = expected.get("authors")
+    if isinstance(authors, list) and authors and authors[-1] == "et al.":
+        expected["authors"] = authors[:-1]
     return expected
+
+
+def _unchecked_identifiers(
+    expected: Mapping[str, Any], actual: Mapping[str, Any] | None, id_type: str,
+) -> list[str]:
+    """Disclose secondary IDs the lookup source cannot corroborate."""
+    primary = {
+        "arxiv": "arxiv_id", "openalex": "openalex_id",
+        "semantic_scholar": "semantic_scholar_id", "nct": "nct_id",
+    }.get(id_type, id_type)
+    return [
+        field for field in (
+            "doi", "pmid", "pmcid", "arxiv_id", "openalex_id", "semantic_scholar_id", "nct_id",
+        )
+        if field != primary and field in expected and not (actual or {}).get(field)
+    ]
 
 
 def _model_record(
@@ -549,18 +595,36 @@ def _included_records(
     records: Sequence[Mapping[str, Any]],
     verification: Sequence[Mapping[str, Any]],
     statuses: Any,
+    screening: Sequence[Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     allowed = (
         {str(status) for status in statuses}
         if isinstance(statuses, Sequence) and not isinstance(statuses, str)
         else {"verified"}
     )
-    verified_by_id = {str(item.get("record_id")): item.get("status") for item in verification}
+    checked_by_id = {str(item.get("record_id")): item for item in verification}
+    included_ids = {
+        str(item.get("record_id")) for item in (screening or [])
+        if item.get("decision") == "include"
+    }
     return [
-        dict(record)
+        _export_record(record, checked_by_id[str(record.get("record_id"))])
         for record in records
-        if verified_by_id.get(str(record.get("record_id"))) in allowed
+        if checked_by_id.get(str(record.get("record_id")), {}).get("status") in allowed
+        and (screening is None or str(record.get("record_id")) in included_ids)
+        and record.get("entity_type", "publication") == "publication"
     ]
+
+
+def _export_record(record: Mapping[str, Any], checked: Mapping[str, Any]) -> dict[str, Any]:
+    output = dict(record)
+    for identifier in ("doi", "pmid"):
+        if checked.get("fields", {}).get(identifier, {}).get("status") != "match":
+            output.pop(identifier, None)
+    authors = output.get("authors")
+    if isinstance(authors, list) and authors and authors[-1] == "et al.":
+        output["authors"] = authors[:-1]
+    return output
 
 
 def _records_to_ris(records: Sequence[Mapping[str, Any]]) -> str:
@@ -590,6 +654,7 @@ def _report(
     verification: Sequence[Mapping[str, Any]],
     screening: Sequence[Mapping[str, Any]],
     model_steps: Mapping[str, Any],
+    exported_count: int,
 ) -> str:
     counts: dict[str, int] = {}
     for item in verification:
@@ -603,6 +668,7 @@ def _report(
             f"- 检索记录：{len(records)}",
             f"- 核验状态：{json.dumps(counts, ensure_ascii=False)}",
             f"- 筛选记录：{len(screening)}",
+            f"- 导出记录：{exported_count}",
             f"- 模型步骤：{json.dumps(dict(model_steps), ensure_ascii=False)}",
             "",
             "本报告只汇总可追溯 artifact；模型筛选不等于证据质量判断。",

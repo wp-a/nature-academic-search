@@ -26,12 +26,18 @@ jobs:
           cache: pip
       - name: Install release tools
         run: python -m pip install -e ".[test]"
-      - name: Verify release metadata
-        run: python -m pytest tests/test_release_metadata.py tests/test_plugin_artifacts.py
+      - name: Lint
+        run: python -m ruff check src tests scripts/check_wheel.py
+      - name: Test package and release metadata
+        run: python -m pytest
+      - name: Test legacy MCP contract
+        run: python -m pytest mcp-server/tests
       - name: Build distributions
         run: python -m build
       - name: Validate distributions
         run: twine check dist/*
+      - name: Check installed wheel
+        run: python scripts/check_wheel.py dist/*.whl
       - uses: actions/upload-artifact@v7
         with:
           name: python-distributions

@@ -36,7 +36,7 @@ def test_version_comes_from_package_metadata() -> None:
     completed = run_module("--version")
 
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip() == "nature-academic-search 0.3.0"
+    assert completed.stdout.strip() == "nature-academic-search 0.3.1"
 
 
 def test_preflight_help_does_not_access_network() -> None:
@@ -249,3 +249,36 @@ def test_citation_preflight_uses_the_unified_skip_aware_reporter() -> None:
 
     assert status == 0
     print_report.assert_called_once_with(results)
+
+
+def test_cli_workflow_verifies_and_exports_without_injected_lookup(tmp_path: Path) -> None:
+    from nature_academic_search import server, workflow
+    from nature_academic_search.cli import main
+
+    record = {"doi": "10.1038/nature14539", "title": "Deep learning", "year": 2015}
+    config = tmp_path / "review.yml"
+    config.write_text(
+        'workflow: smoke\nquestion: "deep learning"\n'
+        'steps: [plan, search, verify, export]\nsearch:\n  sources: [crossref]\n',
+        encoding="utf-8",
+    )
+    output = tmp_path / "artifacts"
+    arguments = ["workflow", "run", "--file", str(config), "--output", str(output)]
+
+    async def search(*args: object, **kwargs: object) -> dict:
+        return {"results": [record], "errors": None}
+
+    with (
+        patch.object(workflow, "search_all", side_effect=search) as searched,
+        patch.object(server._crossref, "get_by_doi", return_value=record) as resolved,
+        patch("nature_academic_search.relay.OpenAICompatibleRelay.from_env", return_value=None),
+    ):
+        assert main(arguments) == 0
+        searched.assert_not_called()
+        resolved.assert_not_called()
+        assert main([*arguments, "--approve"]) == 0
+        resolved.assert_called_once_with(record["doi"])
+
+    checked = json.loads((output / "verification.json").read_text())[0]
+    assert checked["status"] == "verified"
+    assert record["doi"] in (output / "references.ris").read_text()
