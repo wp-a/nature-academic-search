@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 from argparse import Namespace
@@ -115,14 +116,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "search":
         from .server import search_papers
 
+        # search_papers is a coroutine function (required for MCP stdio
+        # dispatch); the CLI has no running event loop, so drive it here.
         return _print_json(
-            search_papers(
-                args.query,
-                sources=_csv(args.sources),
-                rows=args.rows,
-                entity_type=args.entity_type,
-                enrich=_csv(args.enrich),
-                ranking=args.ranking,
+            asyncio.run(
+                search_papers(
+                    args.query,
+                    sources=_csv(args.sources),
+                    rows=args.rows,
+                    entity_type=args.entity_type,
+                    enrich=_csv(args.enrich),
+                    ranking=args.ranking,
+                )
             )
         )
     if args.command == "verify":
