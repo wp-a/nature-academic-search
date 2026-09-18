@@ -116,7 +116,7 @@ def _parse_article(article: ET.Element) -> dict[str, Any]:
         else ""
     )
     publication_types = [
-        text.strip()
+        text.text.strip()
         for text in art.findall("PublicationTypeList/PublicationType")
         if text.text
     ]
