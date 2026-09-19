@@ -17,6 +17,13 @@ logger = setup_logging()
 BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 SOURCE_NAME = "pubmed"
 
+# NCBI eutils connections are intermittently reset on some networks
+# (observed 2/10 connection resets from a CN egress on 2026-09-18).
+# Connection-level failures are transient, so retry them with a short
+# linear backoff before surfacing an error.
+_EUTILS_MAX_ATTEMPTS = 3
+_EUTILS_RETRY_BASE_DELAY = 1.0  # seconds
+
 # Rate limit: 3 req/s without key, 10 req/s with key
 _REQ_INTERVAL_WITH_KEY = 0.11
 _REQ_INTERVAL_WITHOUT_KEY = 0.35
@@ -35,11 +42,14 @@ def _throttle(api_key: str) -> None:
 
 
 def _get(endpoint: str, params: dict[str, Any], timeout: int = 30) -> requests.Response:
-    """Send GET request to NCBI E-utilities with throttling and error handling."""
+    """Send GET request to NCBI E-utilities with throttling and error handling.
+
+    Connection-level failures (ConnectionError) are retried up to
+    ``_EUTILS_MAX_ATTEMPTS`` times with linear backoff; timeouts and HTTP
+    errors surface immediately.
+    """
     cfg = get_config()
     api_key = cfg.pubmed_api_key
-
-    _throttle(api_key)
 
     merged = dict(params)
     if cfg.pubmed_email:
@@ -48,20 +58,48 @@ def _get(endpoint: str, params: dict[str, Any], timeout: int = 30) -> requests.R
         merged["api_key"] = api_key
 
     url = BASE_URL + endpoint
-    try:
-        resp = requests.get(url, params=merged, timeout=timeout)
-        resp.raise_for_status()
-    except requests.Timeout as exc:
-        raise DataSourceError(SOURCE_NAME, f"Request timed out: {url}", exc) from exc
-    except requests.HTTPError as exc:
-        status = exc.response.status_code if exc.response is not None else "?"
-        raise DataSourceError(
-            SOURCE_NAME, f"HTTP {status} from {url}", exc
-        ) from exc
-    except requests.RequestException as exc:
-        raise DataSourceError(SOURCE_NAME, f"Request failed: {url}", exc) from exc
 
-    return resp
+    last_exc: requests.ConnectionError | None = None
+    for attempt in range(1, _EUTILS_MAX_ATTEMPTS + 1):
+        _throttle(api_key)
+        try:
+            resp = requests.get(url, params=merged, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except requests.Timeout as exc:
+            raise DataSourceError(SOURCE_NAME, f"Request timed out: {url}", exc) from exc
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else "?"
+            raise DataSourceError(
+                SOURCE_NAME, f"HTTP {status} from {url}", exc
+            ) from exc
+        except requests.ConnectionError as exc:
+            last_exc = exc
+            if attempt < _EUTILS_MAX_ATTEMPTS:
+                delay = _EUTILS_RETRY_BASE_DELAY * attempt
+                logger.warning(
+                    "NCBI connection reset (attempt %d/%d), retrying in %.1fs: %s",
+                    attempt,
+                    _EUTILS_MAX_ATTEMPTS,
+                    delay,
+                    url,
+                )
+                time.sleep(delay)
+        except requests.RequestException as exc:
+            raise DataSourceError(
+                SOURCE_NAME,
+                f"Request failed: {type(exc).__name__}: {url}",
+                exc,
+            ) from exc
+
+    raise DataSourceError(
+        SOURCE_NAME,
+        (
+            f"Request failed after {_EUTILS_MAX_ATTEMPTS} attempts: "
+            f"{type(last_exc).__name__}: {url}"
+        ),
+        last_exc,
+    ) from last_exc
 
 
 def _parse_article(article: ET.Element) -> dict[str, Any]:
