@@ -122,7 +122,7 @@ def _json_error(message: str, source: str | None = None) -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def search_papers(
+async def search_papers(
     query: str,
     sources: list[str] | None = None,
     rows: int = 5,
@@ -201,20 +201,16 @@ def search_papers(
     })
 
     try:
-        import asyncio
-
-        result = asyncio.run(
-            search_all(
-                query,
-                sources,
-                rows,
-                filter_type=type,
-                adapters=adapters,
-                enrichers=enrich,
-                entity_type=entity_type,
-                filters=filters,
-                ranking=ranking,
-            )
+        result = await search_all(
+            query,
+            sources,
+            rows,
+            filter_type=type,
+            adapters=adapters,
+            enrichers=enrich,
+            entity_type=entity_type,
+            filters=filters,
+            ranking=ranking,
         )
     except Exception as exc:
         logger.exception("search_papers failed")
