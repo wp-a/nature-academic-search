@@ -79,3 +79,42 @@ def test_lookup_mesh_uses_esummary_for_descriptor_metadata() -> None:
         "retmode": "json",
         "version": "2.0",
     }
+
+
+def test_parse_article_reads_publication_types_from_element_text() -> None:
+    # Regression: the comprehension called .strip() on the Element itself
+    # instead of its .text, raising AttributeError ('xml.etree.ElementTree
+    # .Element' object has no attribute 'strip') for every article that
+    # carries a <PublicationType>, so PubMed searches always failed.
+    import xml.etree.ElementTree as ET
+
+    from nature_academic_search.sources.pubmed import _parse_article
+
+    article = ET.fromstring(
+        """
+        <PubmedArticle>
+          <MedlineCitation>
+            <PMID>42754655</PMID>
+            <Article>
+              <Journal>
+                <Title>J Mol Biol</Title>
+                <JournalIssue><PubDate><Year>2025</Year></PubDate></JournalIssue>
+              </Journal>
+              <ArticleTitle>Protein folding pathways</ArticleTitle>
+              <PublicationTypeList>
+                <PublicationType>Journal Article</PublicationType>
+                <PublicationType>Research Support, U.S. Gov't, Non-P.H.S.</PublicationType>
+              </PublicationTypeList>
+            </Article>
+          </MedlineCitation>
+        </PubmedArticle>
+        """
+    )
+
+    record = _parse_article(article)
+
+    assert record["pmid"] == "42754655"
+    assert record["title"] == "Protein folding pathways"
+    assert record["publication_type"] == (
+        "Journal Article; Research Support, U.S. Gov't, Non-P.H.S."
+    )
