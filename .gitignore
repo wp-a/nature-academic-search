@@ -8,3 +8,14 @@ __pycache__/
 build/
 dist/
 
+.DS_Store
+*.pyc
+.mypy_cache/
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
