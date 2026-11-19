@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -191,7 +191,7 @@ def test_cli_search_prints_tool_json_without_network() -> None:
     )
     with patch(
         "nature_academic_search.server.search_papers",
-        return_value=payload,
+        new=AsyncMock(return_value=payload),
     ) as search_papers:
         status = main(["search", "generative AI", "--rows", "3"])
 

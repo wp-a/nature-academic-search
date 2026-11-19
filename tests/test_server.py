@@ -155,7 +155,7 @@ def test_invalid_search_source_is_rejected_before_search() -> None:
     server = load_server()
 
     with patch.object(server, "search_all") as search_all:
-        result = json.loads(server.search_papers("prime editing", sources=["unknown"]))
+        result = json.loads(asyncio.run(server.search_papers("prime editing", sources=["unknown"])))
 
     assert result["error"].startswith("Invalid sources")
     search_all.assert_not_called()
@@ -221,7 +221,9 @@ def test_explicit_legacy_sources_are_forwarded_without_expansion() -> None:
         "search_all",
         new=AsyncMock(return_value=expected),
     ) as search_all:
-        result = json.loads(server.search_papers("prime editing", sources=legacy_sources))
+        result = json.loads(
+            asyncio.run(server.search_papers("prime editing", sources=legacy_sources))
+        )
 
     assert result == expected
     assert search_all.await_args.args[:3] == ("prime editing", legacy_sources, 5)
@@ -236,7 +238,7 @@ def test_default_search_defers_source_selection_to_publication_search() -> None:
         "search_all",
         new=AsyncMock(return_value=expected),
     ) as search_all:
-        result = json.loads(server.search_papers("prime editing"))
+        result = json.loads(asyncio.run(server.search_papers("prime editing")))
 
     assert result == expected
     assert search_all.await_args.args[:3] == ("prime editing", None, 5)
@@ -254,11 +256,11 @@ def test_trial_search_and_semantic_scholar_enrichment_are_forwarded() -> None:
         new=AsyncMock(return_value=expected),
     ) as search_all:
         result = json.loads(
-            server.search_papers(
+            asyncio.run(server.search_papers(
                 "prime editing",
                 entity_type="trial",
             )
-        )
+        ))
 
     assert result == expected
     assert search_all.await_args.args[:3] == ("prime editing", None, 5)
@@ -275,12 +277,12 @@ def test_trial_search_and_semantic_scholar_enrichment_are_forwarded() -> None:
         new=AsyncMock(return_value=publication_expected),
     ) as search_all:
         json.loads(
-            server.search_papers(
+            asyncio.run(server.search_papers(
                 "prime editing",
                 sources=["openalex"],
                 enrich=["semantic_scholar"],
             )
-        )
+        ))
 
     assert search_all.await_args.kwargs["enrichers"] == ["semantic_scholar"]
 
@@ -290,11 +292,11 @@ def test_trial_search_and_semantic_scholar_enrichment_are_forwarded() -> None:
         new=AsyncMock(return_value=publication_expected),
     ) as search_all:
         json.loads(
-            server.search_papers(
+            asyncio.run(server.search_papers(
                 "prime editing",
                 sources=["semantic_scholar"],
             )
-        )
+        ))
 
     assert search_all.await_args.args[1] == ["semantic_scholar"]
 
@@ -306,12 +308,12 @@ def test_discovery_filters_and_ranking_are_forwarded() -> None:
 
     with patch.object(server, "search_all", new=AsyncMock(return_value=expected)) as search_all:
         result = json.loads(
-            server.search_papers(
+            asyncio.run(server.search_papers(
                 "AI",
                 filters=filters,
                 ranking="none",
             )
-        )
+        ))
 
     assert result == expected
     assert search_all.await_args.kwargs["filters"] == filters
@@ -322,7 +324,7 @@ def test_discovery_filter_shape_is_rejected_before_search() -> None:
     server = load_server()
 
     with patch.object(server, "search_all") as search_all:
-        result = json.loads(server.search_papers("AI", filters=["bad"]))
+        result = json.loads(asyncio.run(server.search_papers("AI", filters=["bad"])))
 
     assert result == {"error": "filters must be an object"}
     search_all.assert_not_called()
@@ -333,12 +335,12 @@ def test_invalid_entity_source_combination_is_rejected_before_search() -> None:
 
     with patch.object(server, "search_all") as search_all:
         result = json.loads(
-            server.search_papers(
+            asyncio.run(server.search_papers(
                 "prime editing",
                 sources=["pubmed"],
                 entity_type="trial",
             )
-        )
+        ))
 
     assert result["error"].startswith("Invalid sources")
     search_all.assert_not_called()
@@ -468,3 +470,21 @@ def test_trial_registration_is_rejected_as_paper_citation() -> None:
         "source": "clinicaltrials_gov",
     }
     lookup.assert_not_called()
+
+
+def test_search_papers_is_a_coroutine_function_for_sync_tool_dispatch() -> None:
+    # The mcp Python SDK (>=1.27) invokes sync FastMCP tool functions directly
+    # on the event loop thread (FuncMetadata.call_fn_with_arg_validation).
+    # A sync search_papers therefore cannot use asyncio.run() internally: it
+    # raises "RuntimeError: asyncio.run() cannot be called from a running
+    # event loop" and every search_papers call fails under stdio transport.
+    # The tool must be defined as a coroutine function so the SDK awaits it.
+    import inspect
+
+    server = load_server()
+
+    assert inspect.iscoroutinefunction(server.search_papers)
+
+    # The registered FastMCP tool must wrap the coroutine function as well.
+    tools = server.mcp._tool_manager._tools
+    assert inspect.iscoroutinefunction(tools["search_papers"].fn)
