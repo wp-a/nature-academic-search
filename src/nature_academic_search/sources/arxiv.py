@@ -2,10 +2,10 @@
 
 import re
 import time
-import urllib.parse
-import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
+
+import requests
 
 from ..config import get_config
 from ..errors import DataSourceError
@@ -168,37 +168,49 @@ class ArxivSource:
     def _request(self, params: dict) -> str:
         """Execute an HTTP GET to the arXiv API with rate limiting."""
         self._enforce_rate_limit()
-        url = f"{ARXIV_API_URL}?{urllib.parse.urlencode(params)}"
         timeout = self._get_timeout()
-        logger.debug("arXiv request: %s", url)
+        logger.debug("arXiv request: %s", params)
 
+        # Do NOT use urllib.request here. arXiv's edge answers HTTP 406 to
+        # urllib's TLS handshake regardless of request headers: urllib gets
+        # 406 even with "Accept: */*" (reproduced x5 on 2026-09-18), while
+        # requests and curl both get 200 for the same URL with or without
+        # Accept. requests is already a dependency (pubmed/crossref use it).
         try:
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", "academic-search/1.0")
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return resp.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            if exc.code in (429, 503):
+            resp = requests.get(
+                ARXIV_API_URL,
+                params=params,
+                headers={
+                    "User-Agent": "academic-search/1.0",
+                    "Accept": "application/atom+xml, text/xml, */*",
+                },
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            return resp.text
+        except requests.Timeout as exc:
+            raise DataSourceError(
+                _SOURCE_NAME,
+                f"Request timed out after {timeout}s",
+                original_error=exc,
+            ) from exc
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else "?"
+            if status in (429, 503):
                 raise DataSourceError(
                     _SOURCE_NAME,
-                    f"Rate limited or unavailable (HTTP {exc.code})",
+                    f"Rate limited or unavailable (HTTP {status})",
                     original_error=exc,
                 ) from exc
             raise DataSourceError(
                 _SOURCE_NAME,
-                f"HTTP error {exc.code}: {exc.reason}",
+                f"HTTP error {status}",
                 original_error=exc,
             ) from exc
-        except urllib.error.URLError as exc:
+        except requests.RequestException as exc:
             raise DataSourceError(
                 _SOURCE_NAME,
-                f"Network error: {exc.reason}",
-                original_error=exc,
-            ) from exc
-        except TimeoutError as exc:
-            raise DataSourceError(
-                _SOURCE_NAME,
-                f"Request timed out after {timeout}s",
+                f"Network error: {type(exc).__name__}",
                 original_error=exc,
             ) from exc
 
