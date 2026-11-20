@@ -150,7 +150,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False))
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0
+        return int(result.get("status") == "failed")
     return 0
 
 

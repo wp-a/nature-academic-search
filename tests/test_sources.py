@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from nature_academic_search.sources import CrossRefSource
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -49,3 +51,16 @@ def test_logging_setup_is_idempotent() -> None:
     assert same_logger is logger
     assert tuple(same_logger.handlers) == first_handlers
     assert sum(isinstance(handler.formatter, JSONFormatter) for handler in first_handlers) == 1
+
+
+def test_crossref_keeps_print_year_and_search_publication_date() -> None:
+    item = {
+        "published": {"date-parts": [[2023, 11, 30]]},
+        "published-online": {"date-parts": [[2023, 11, 30]]},
+        "published-print": {"date-parts": [[2024, 2]]},
+    }
+
+    record = CrossRefSource()._normalize_search_item(item)
+
+    assert record["year"] == 2024
+    assert record["publication_date"] == "2023-11-30"

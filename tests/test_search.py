@@ -4,6 +4,7 @@ import asyncio
 import json
 import sys
 from datetime import datetime
+from itertools import permutations
 from pathlib import Path
 
 import pytest
@@ -69,6 +70,43 @@ def test_arxiv_versions_are_deduplicated_without_losing_order() -> None:
 
     assert [record["title"] for record in merged] == ["First", "Second"]
     assert merged[0]["arxiv_id"] == "2401.12345"
+
+
+def test_title_match_does_not_merge_distinct_dois_through_an_ambiguous_record() -> None:
+    records = [
+        {"title": "Editorial", "year": 2024, "doi": "10.1000/a", "source": "crossref"},
+        {"title": "Editorial", "year": 2024, "source": "openalex"},
+        {"title": "Editorial", "year": 2024, "doi": "10.1000/b", "source": "pubmed"},
+    ]
+
+    for order in permutations(records):
+        merged = deduplicate_records(order)
+        assert len(merged) == 3
+        assert {record.get("doi") for record in merged} == {"10.1000/a", None, "10.1000/b"}
+
+
+def test_title_fallback_preserves_unicode_letters_and_normalizes_equivalent_forms() -> None:
+    records = [
+        {"title": "AI 在医学教育的应用", "year": 2024, "source": "crossref"},
+        {"title": "AI 在药物发现的应用", "year": 2024, "source": "pubmed"},
+        {"title": "ＡＩ：在医学教育的应用", "year": 2024, "source": "openalex"},
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert [record["sources"] for record in merged] == [["crossref", "openalex"], ["pubmed"]]
+
+
+def test_deduplication_keeps_a_compatible_date_with_higher_precision() -> None:
+    records = [
+        {"doi": "10.1000/a", "publication_date": "2024", "source": "crossref"},
+        {"doi": "10.1000/a", "publication_date": "2024-05-07", "source": "openalex"},
+        {"doi": "10.1000/a", "publication_date": "2024-06-10", "source": "europe_pmc"},
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert merged[0]["publication_date"] == "2024-05-07"
 
 
 class FakeSource:
@@ -297,6 +335,65 @@ def test_search_all_applies_filters_translates_source_kwargs_and_ranks_results()
     }
 
 
+def test_search_all_retains_crossref_publication_dates_at_source_precision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from nature_academic_search.sources.crossref import CrossRefSource
+
+    crossref = CrossRefSource()
+
+    def crossref_items(path: str, params: dict) -> dict:
+        assert path == "/works"
+        assert params["filter"] == "from-pub-date:2024-07-01,until-pub-date:2024-07-31"
+        return {
+            "total-results": 3,
+            "items": [
+                {"DOI": "10.1000/day", "published-online": {"date-parts": [[2024, 7, 20]]}},
+                {"DOI": "10.1000/month", "published": {"date-parts": [[2024, 7]]}},
+                {"DOI": "10.1000/year", "published-online": {"date-parts": [[2024]]}},
+            ],
+        }
+
+    monkeypatch.setattr(crossref, "_request", crossref_items)
+    result = asyncio.run(
+        search_all(
+            "research",
+            ["crossref"],
+            rows=5,
+            adapters={"crossref": crossref},
+            filters={"date_from": "2024-07-01", "date_to": "2024-07-31"},
+            ranking="none",
+        )
+    )
+
+    assert [record["publication_date"] for record in result["results"]] == [
+        "2024-07-20", "2024-07", "2024",
+    ]
+
+
+def test_partial_dates_without_source_filter_need_to_fit_entire_requested_range() -> None:
+    adapter = FakeSource(
+        {"total": 3, "results": [
+            {"title": "Known month", "publication_date": "2024-07"},
+            {"title": "Unknown month", "year": 2024},
+            {"title": "Outside period", "publication_date": "2024-08-01"},
+        ]},
+        expected_query="research",
+    )
+    result = asyncio.run(
+        search_all(
+            "research",
+            ["semantic_scholar"],
+            rows=5,
+            adapters={"semantic_scholar": adapter},
+            filters={"date_from": "2024-07-01", "date_to": "2024-07-31"},
+            ranking="none",
+        )
+    )
+
+    assert [record["title"] for record in result["results"]] == ["Known month"]
+
+
 def test_search_all_ranking_none_keeps_filtered_source_order() -> None:
     adapters = {
         "crossref": FakeSource(
@@ -445,6 +542,28 @@ def test_conflicting_identifiers_are_retained_without_overwrite() -> None:
             "source": "europe_pmc",
         }
     ]
+
+
+def test_conflicting_doi_does_not_link_later_records() -> None:
+    records = [
+        {
+            "source": "pubmed", "title": "Article A", "year": 2023,
+            "pmid": "12345678", "doi": "10.1000/a",
+        },
+        {
+            "source": "europe_pmc", "title": "Article A", "year": 2023,
+            "pmid": "12345678", "doi": "10.1000/b",
+        },
+        {"source": "crossref", "title": "Article B", "year": 2024, "doi": "10.1000/b"},
+    ]
+
+    merged = deduplicate_records(records)
+
+    assert [(record["title"], record["doi"]) for record in merged] == [
+        ("Article A", "10.1000/a"),
+        ("Article B", "10.1000/b"),
+    ]
+    assert merged[0]["conflicts"][0]["incoming"] == "10.1000/b"
 
 
 def test_publication_and_trial_titles_never_merge() -> None:

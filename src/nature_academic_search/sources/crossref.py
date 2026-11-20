@@ -1,5 +1,6 @@
 """CrossRef data source for academic search."""
 
+from datetime import date
 from urllib.parse import quote
 
 import requests
@@ -202,21 +203,34 @@ class CrossRefSource:
         return names
 
     @staticmethod
-    def _extract_year(item: dict) -> int | None:
-        """Best-effort publication year extraction."""
-        for key in ("published-print", "published-online", "created"):
-            parts = item.get(key, {}).get("date-parts", [[None]])
-            year = parts[0][0] if parts and parts[0] else None
-            if year is not None:
-                return year
+    def _extract_date(item: dict, keys: tuple[str, ...]) -> str | None:
+        """Return an ISO date at the precision reported by Crossref."""
+        for key in keys:
+            parts = (item.get(key) or {}).get("date-parts") or []
+            if not parts or not parts[0] or parts[0][0] is None:
+                continue
+            values = parts[0][:3]
+            precision = next((i for i, value in enumerate(values) if value is None), len(values))
+            try:
+                year, month, day = (values[:precision] + [1, 1])[:3]
+                return date(year, month, day).isoformat()[: (4, 7, 10)[precision - 1]]
+            except (TypeError, ValueError):
+                continue
         return None
 
     def _normalize_search_item(self, item: dict) -> dict:
         """Map a CrossRef work item to the unified search result format."""
-        return {
+        publication_date = self._extract_date(
+            item, ("published", "issued", "published-print", "published-online")
+        )
+        # Keep the citation year precedence separate from the publication date used in search.
+        citation_date = self._extract_date(
+            item, ("published-print", "published-online", "created")
+        ) or publication_date
+        record = {
             "title": (item.get("title") or [""])[0],
             "authors": self._extract_authors(item.get("author", []), limit=5),
-            "year": self._extract_year(item),
+            "year": int(citation_date[:4]) if citation_date else None,
             "doi": item.get("DOI"),
             "journal": (item.get("container-title") or [""])[0],
             "language": item.get("language") or "",
@@ -224,6 +238,9 @@ class CrossRefSource:
             "source": self.SOURCE_NAME,
             "citation_count": item.get("is-referenced-by-count", 0),
         }
+        if publication_date:
+            record["publication_date"] = publication_date
+        return record
 
     def _normalize_detail_item(self, item: dict) -> dict:
         """Map a CrossRef work item to the unified detail result format."""

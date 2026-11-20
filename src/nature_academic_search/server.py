@@ -18,12 +18,12 @@ from mcp.server.fastmcp import FastMCP
 from .errors import DataSourceError
 from .graph import DEFAULT_RELATION_SOURCES, build_citation_graph
 from .logging import setup_logging
+from .resolution import normalize_identifier, resolve_record, runtime_adapters
 from .search import search_all
 from .sources.registry import (
     DEFAULT_PUBLICATION_SOURCES,
     SOURCE_ENTITY_TYPES,
     TRIAL_SOURCES,
-    build_adapters,
     source_capabilities,
 )
 from .verification import verify_record
@@ -32,7 +32,7 @@ mcp = FastMCP("academic-search")
 logger = setup_logging()
 
 # Singleton source instances (shared across tool calls)
-_ADAPTERS = build_adapters(tuple(SOURCE_ENTITY_TYPES))
+_ADAPTERS = runtime_adapters()
 _crossref = _ADAPTERS["crossref"]
 _pubmed = _ADAPTERS["pubmed"]
 _arxiv = _ADAPTERS["arxiv"]
@@ -302,7 +302,7 @@ def get_paper_by_id(
     })
 
     try:
-        result = _lookup_record(id.strip(), resolved_type)
+        result = resolve_record(id, resolved_type)
         if expected is not None:
             result = dict(result)
             result["verification"] = verify_record(expected, result)
@@ -367,7 +367,7 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     })
 
     try:
-        lookup_id = _normalize_identifier(id, resolved_type)
+        lookup_id = normalize_identifier(id, resolved_type)
         if resolved_type == "nct":
             return _json_error(
                 "Trial registrations are not paper citations",
@@ -377,7 +377,7 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
             citation = _crossref.get_citation(lookup_id, style=style)
             return _json_ok({"id": id, "style": style, "citation": citation})
 
-        paper = _lookup_record(lookup_id, resolved_type)
+        paper = resolve_record(lookup_id, resolved_type)
         doi = str(paper.get("doi") or "").strip()
         if doi:
             citation = _crossref.get_citation(doi, style=style)
@@ -399,42 +399,6 @@ def get_citation(id: str, id_type: str = "auto", style: str = "apa") -> str:
     except Exception as exc:
         logger.exception("get_citation failed unexpectedly")
         return _json_error(f"Unexpected error: {exc}")
-
-
-def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
-    """Route a normalized identifier type to its owning source adapter."""
-    identifier = _normalize_identifier(identifier, id_type)
-    if id_type == "doi":
-        return _crossref.get_by_doi(identifier)
-    if id_type == "pmid":
-        return _pubmed.get_by_pmid(identifier)
-    if id_type == "pmcid":
-        return _europe_pmc.get_by_pmcid(identifier)
-    if id_type == "arxiv":
-        return _arxiv.get_by_id(identifier)
-    if id_type == "openalex":
-        return _openalex.get_by_id(identifier)
-    if id_type == "semantic_scholar":
-        return _semantic_scholar.get_by_id(identifier)
-    if id_type == "nct":
-        return _clinicaltrials.get_by_id(identifier)
-    raise ValueError(f"Unsupported ID type: {id_type}")
-
-
-def _normalize_identifier(identifier: str, id_type: str) -> str:
-    """Remove accepted DOI/PMID wrappers before strict source lookups."""
-    value = identifier.strip()
-    if id_type == "doi":
-        value = re.sub(
-            r"^https?://(?:dx\.)?doi\.org/",
-            "",
-            value,
-            flags=re.IGNORECASE,
-        )
-        return re.sub(r"^doi:\s*", "", value, flags=re.IGNORECASE)
-    if id_type == "pmid":
-        return re.sub(r"^pmid:\s*", "", value, flags=re.IGNORECASE)
-    return value
 
 
 def _format_basic_citation(paper: dict, style: str) -> str:
