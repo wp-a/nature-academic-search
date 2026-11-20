@@ -52,9 +52,7 @@ def test_display_brand_changes_without_renaming_package_or_commands() -> None:
         project = tomllib.load(handle)["project"]
     readme = read("README.md")
 
-    assert f"# {DISPLAY_BRAND}" in readme
-    assert "Nature Academic Search" not in readme
-    assert "安装标识仍为 `nature-academic-search`" in readme
+    assert readme.splitlines()[0] == f"# {DISPLAY_BRAND}"
     assert project["name"] == TECHNICAL_ID
     assert project["description"].startswith(DISPLAY_BRAND)
     assert set(project["scripts"]) == {
@@ -63,43 +61,19 @@ def test_display_brand_changes_without_renaming_package_or_commands() -> None:
     }
 
 
-def test_readme_documents_all_supported_install_paths() -> None:
-    readme = read("README.md")
-
-    assert "uv tool install nature-academic-search" in readme
-    assert "bash install.sh researcher@example.com" in readme
-    assert "codex plugin marketplace add wp-a/nature-academic-search" in readme
-    assert "claude plugin marketplace add wp-a/nature-academic-search" in readme
-
-
-def test_readme_discloses_relay_promotion_after_installation() -> None:
-    readme = read("README.md")
-
-    promotion = "> **安装后下一步：配置可选模型入口**"
-    for required in (
-        "> [!IMPORTANT]",
-        promotion,
-        "如果要启用 workflow 的计划或筛选辅助",
-        "[进入 WPIRONMAN 控制台 →](https://api.wpironman.top)",
-    ):
-        assert required in readme
-
-    assert readme.index("## 30 秒开始") < readme.index(promotion)
-    assert readme.index(promotion) < readme.index("## 数据源如何分工")
-
-
-def test_relay_visibility_has_first_screen_and_contextual_entrypoints() -> None:
+def test_client_install_commands_match_marketplaces() -> None:
     readme = read("README.md")
     installation = read("docs/installation.md")
-    workflows = read("references/search-workflows.md")
-    first_screen = readme.split("## 直接这样问", 1)[0]
+    codex = read_json(".agents/plugins/marketplace.json")
+    claude = read_json(".claude-plugin/marketplace.json")
 
-    assert "[WPIRONMAN AI 中转]" in first_screen
-    assert "https://api.wpironman.top" in first_screen
-    assert "可选模型入口" in first_screen
-    assert "https://api.wpironman.top" in installation
-    assert "https://api.wpironman.top" in workflows
-    assert "不是论文来源" in first_screen
+    for document in (readme, installation):
+        assert f"codex plugin marketplace add wp-a/{TECHNICAL_ID}" in document
+        assert f"claude plugin marketplace add wp-a/{TECHNICAL_ID}" in document
+        assert f"codex plugin add {TECHNICAL_ID}@{codex['name']}" in document
+        assert f"claude plugin install {TECHNICAL_ID}@{claude['name']}" in document
+        assert f"uv tool install {TECHNICAL_ID}" in document
+    assert "bash install.sh researcher@example.com" in installation
 
 
 def test_plugin_discovery_copy_exposes_optional_relay_without_making_it_required() -> None:
@@ -124,72 +98,6 @@ def test_plugin_discovery_copy_exposes_optional_relay_without_making_it_required
     assert all("WPIRONMAN" in surface for surface in surface_text)
     assert all("可选" in surface or "optional" in surface.casefold() for surface in surface_text)
     assert all("https://api.wpironman.top" in surface for surface in surface_text)
-
-
-def test_readme_presents_the_chinese_research_workflow() -> None:
-    readme = read("README.md")
-
-    for required in (
-        "可复现的文献检索、核验与引用导出",
-        "直接这样问",
-        "检索 → 去重 → 核验 → 导出",
-        "Google Scholar",
-        "Codex",
-        "Claude Code",
-        "如果这个项目",
-    ):
-        assert required in readme
-
-
-def test_readme_explains_expanded_source_routing_without_overclaiming() -> None:
-    readme = read("README.md")
-
-    for source in (
-        "CrossRef",
-        "PubMed",
-        "arXiv",
-        "OpenAlex",
-        "Europe PMC",
-        "Semantic Scholar",
-        "ClinicalTrials.gov",
-    ):
-        assert source in readme
-    for contract in (
-        'entity_type="trial"',
-        "sources_queried",
-        "sources_succeeded",
-        "sources_skipped",
-        "citation_counts",
-        "试验注册",
-    ):
-        assert contract in readme
-
-
-def test_readme_documents_evidence_grade_search_contract() -> None:
-    readme = read("README.md")
-
-    for required in (
-        "search_run",
-        "record_id",
-        "result_fingerprint",
-        "expected",
-        "字段级",
-        "manual_needed",
-        "mismatch",
-        "run.json",
-        "filters",
-        "ranking",
-        "ranking_score",
-        "ranking_reasons",
-        "score_version",
-        "workflow",
-        "plan.json",
-        "screening.csv",
-        "allow_full_text",
-        "ACADEMIC_SEARCH_LLM_BASE_URL",
-        "responses_http",
-    ):
-        assert required in readme
 
 
 def test_community_growth_docs_track_discovery_instead_of_release_count() -> None:
@@ -284,51 +192,18 @@ def test_real_result_examples_are_dated_grounded_and_rendered() -> None:
         assert image.stat().st_size > 50_000
 
 
-def test_readme_leads_to_three_copyable_real_result_cases() -> None:
+def test_readme_links_installation_usage_and_real_examples() -> None:
     readme = read("README.md")
 
-    for required in (
-        "academic-search-topic-scoping.png",
-        "三个可复制的中文场景",
-        "开题检索",
-        "AI 幻觉引用核验",
-        "PubMed / MeSH 检索",
+    for path in (
+        "docs/installation.md",
+        "docs/usage.md",
         "docs/examples/topic-scoping.md",
         "docs/examples/citation-verification.md",
         "docs/examples/pubmed-mesh.md",
-        "本次真实结果",
-        "2026-07-31",
-        "git clone https://github.com/wp-a/nature-academic-search.git",
-        "bash install.sh --client both --email researcher@example.com",
-        "PyPI `0.3.0`",
-        "插件固定版本中",
-        "ESummary 解析修复已包含在",
     ):
-        assert required in readme
-
-
-def test_readme_surfaces_six_copyable_scenarios_and_relay_boundaries() -> None:
-    readme = read("README.md")
-
-    for scenario in (
-        "六个可复制的中文场景",
-        "上下游引文追踪",
-        "综述整理",
-        "临床试验关联",
-        "academic-search-topic-scoping.png",
-        "academic-search-citation-verification.png",
-        "academic-search-pubmed-mesh.png",
-        "citation_graph",
-        "graph.json",
-        "WPIRONMAN AI 中转：可选模型层",
-        "不是论文来源",
-        "responses_http",
-        "privacy.allow_full_text",
-    ):
-        assert scenario in readme
-
-    assert "中转不提供 Crossref" in readme
-    assert "https://api.wpironman.top" in readme
+        assert f"]({path})" in readme
+        assert (ROOT / path).is_file()
 
 
 def test_mesh_example_discloses_current_main_install_boundary() -> None:

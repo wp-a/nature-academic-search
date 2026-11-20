@@ -23,21 +23,23 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-          cache: pip
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: "0.13.9"
       - name: Install release tools
-        run: python -m pip install -e ".[test]"
+        run: uv sync --locked --extra test --python 3.13
       - name: Lint
-        run: python -m ruff check src tests scripts/check_wheel.py
+        run: uv run --no-sync python -m ruff check src tests scripts/check_wheel.py
       - name: Test package and release metadata
-        run: python -m pytest
+        run: uv run --no-sync python -m pytest
       - name: Test legacy MCP contract
-        run: python -m pytest mcp-server/tests
+        run: uv run --no-sync python -m pytest mcp-server/tests
       - name: Build distributions
-        run: python -m build
+        run: uv run --no-sync python -m build
       - name: Validate distributions
-        run: twine check dist/*
+        run: uv run --no-sync twine check dist/*
       - name: Check installed wheel
-        run: python scripts/check_wheel.py dist/*.whl
+        run: uv run --no-sync python scripts/check_wheel.py dist/*.whl
       - uses: actions/upload-artifact@v7
         with:
           name: python-distributions

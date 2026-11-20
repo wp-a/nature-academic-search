@@ -12,19 +12,23 @@
 
 ## Pull request gates
 
-Run from the repository root:
+Run from the repository root with the uv version pinned in CI.
 
 ```bash
-python -m pip install -e ".[test]"
-python scripts/sync_skill.py --check
-python -m ruff check src tests scripts/check_wheel.py
-python -m pytest
-python -m pytest mcp-server/tests
-python -m build
-twine check dist/*
-python scripts/check_wheel.py dist/nature_academic_search-0.3.1-py3-none-any.whl
+uv sync --locked --extra test
+uv run --no-sync python scripts/sync_skill.py --check
+uv run --no-sync python -m ruff check src tests scripts/check_wheel.py
+uv run --no-sync python -m pytest
+uv run --no-sync python -m pytest mcp-server/tests
+uv run --no-sync python -m build
+uv run --no-sync twine check dist/*
+uv run --no-sync python scripts/check_wheel.py dist/*.whl
 claude plugin validate --strict plugins/nature-academic-search
 ```
+
+Run `uv lock` after changing package metadata or dependencies and commit
+`uv.lock` alongside `pyproject.toml`. CI and publishing install the locked test
+dependencies before running their checks.
 
 Also run the Codex plugin validator from `plugin-creator` and the skill validator
 from `skill-creator` when either manifest or `SKILL.md` changes.
@@ -66,9 +70,9 @@ command. Publish only when code, fixes, embedded skill behavior, or required
 metadata changes. Do not create a second package for the display brand.
 
 The DeepSeek Harness integration lives in the standalone repository
-[`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search)
-and is published as the npm Bundle `dsh-academic-paper-search`. It is
-intentionally a thin adapter over the PyPI MCP runtime and the official
+[`wp-a/dsh-academic-paper-search`](https://github.com/wp-a/dsh-academic-paper-search).
+Use the source installation documented there until the Bundle is available on
+the public npm registry. It is a thin adapter over the PyPI MCP runtime and the official
 `@deepseek-ai/dsh-mcp-client`; keep those contracts in sync:
 
 - Update `cordis.patch.yml` in the standalone Bundle repository when the pinned
@@ -92,7 +96,7 @@ VERSION=x.y.z
 1. Confirm the package name is still available and no unexpected release exists.
 2. Update versions in `pyproject.toml`, `src/nature_academic_search/__init__.py`,
    both plugin manifests, Claude marketplace metadata, tests, and the plugin
-   `.mcp.json` pin. The Codex marketplace has no version field.
+   `.mcp.json` pin. Refresh `uv.lock` with `uv lock`. The Codex marketplace has no version field.
 3. Run every pull request gate and explicit network smoke test.
 4. If the TestPyPI Trusted Publisher is configured, trigger `publish.yml` with
    `testpypi`; install the uploaded wheel in a clean environment and verify all
@@ -120,7 +124,11 @@ version in the release notes.
   invalid, pending or excluded decisions stay out of RIS. Without `screen`, export
   uses verification alone. Trial registrations remain in JSON. Preserve these
   behaviors in regressions and the bundled skill; include `exported_count` in reports.
-
+- A workflow with a successful search can complete with zero hits. If some sources
+  fail, it returns `completed_with_errors` and keeps the results from successful sources.
+  If all sources fail, it returns `failed`, the CLI exits with code 1, and the run
+  saves diagnostics without writing a new RIS. Use the run manifest to identify
+  artifacts produced by the current run when reusing an output directory.
 - Review monthly Dependabot updates for Python and GitHub Actions.
 - Investigate scheduled network-smoke failures by source before changing retry
   behavior.

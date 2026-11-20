@@ -68,7 +68,10 @@ def test_built_wheel_must_pass_smoke_before_artifact_upload(filename: str) -> No
 
 def test_publish_runs_package_and_legacy_tests_before_building() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/publish.yml").read_text())
-    commands = [step.get("run", "") for step in workflow["jobs"]["build"]["steps"]]
+    commands = [
+        step.get("run", "").removeprefix("uv run --no-sync ")
+        for step in workflow["jobs"]["build"]["steps"]
+    ]
     build = commands.index("python -m build")
 
     assert "python -m pytest" in commands[:build]

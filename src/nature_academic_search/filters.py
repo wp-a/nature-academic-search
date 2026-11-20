@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from calendar import monthrange
+from collections.abc import Collection, Mapping, Sequence
 from datetime import date
 from typing import Any
 
@@ -132,28 +133,27 @@ def translate_filters(source: str, filters: Mapping[str, Any]) -> dict[str, Any]
 
 
 def apply_post_filters(
-    records: Sequence[Mapping[str, Any]], filters: Mapping[str, Any]
+    records: Sequence[Mapping[str, Any]],
+    filters: Mapping[str, Any],
+    *,
+    date_filtered_sources: Collection[str] = (),
 ) -> list[dict[str, Any]]:
     """Apply strict local filtering for fields that source APIs may omit."""
     normalized = normalize_filters(filters)
-    return [dict(record) for record in records if _matches(record, normalized)]
+    return [
+        dict(record)
+        for record in records
+        if _matches(record, normalized, date_filtered_sources)
+    ]
 
 
-def _matches(record: Mapping[str, Any], filters: Mapping[str, Any]) -> bool:
+def _matches(
+    record: Mapping[str, Any],
+    filters: Mapping[str, Any],
+    date_filtered_sources: Collection[str],
+) -> bool:
     if "date_from" in filters or "date_to" in filters:
-        value = record.get("publication_date") or record.get("date") or record.get("start_date")
-        if value:
-            candidate = str(value)[:10]
-        elif record.get("year") not in (None, ""):
-            try:
-                candidate = f"{int(record['year']):04d}-01-01"
-            except (TypeError, ValueError):
-                return False
-        else:
-            return False
-        if filters.get("date_from") and candidate < filters["date_from"]:
-            return False
-        if filters.get("date_to") and candidate > filters["date_to"]:
+        if not _matches_date(record, filters, date_filtered_sources):
             return False
 
     if "language" in filters:
@@ -198,6 +198,44 @@ def _matches(record: Mapping[str, Any], filters: Mapping[str, Any]) -> bool:
             return False
 
     return True
+
+
+def _matches_date(
+    record: Mapping[str, Any],
+    filters: Mapping[str, Any],
+    date_filtered_sources: Collection[str],
+) -> bool:
+    value = record.get("publication_date") or record.get("date") or record.get("start_date")
+    bounds = _date_bounds(value) or _date_bounds(record.get("year"))
+    source_filtered = record.get("source") in date_filtered_sources or any(
+        source in date_filtered_sources for source in record.get("sources") or []
+    )
+    if bounds is None:
+        return source_filtered
+
+    record_start, record_end = bounds
+    date_from = filters.get("date_from", "0001-01-01")
+    date_to = filters.get("date_to", "9999-12-31")
+    if date_from <= record_start and record_end <= date_to:
+        return True
+    # A partial date can only overlap a narrower range. Keep it if the source
+    # already applied the requested range, rather than assigning a guessed day.
+    return source_filtered and record_start <= date_to and date_from <= record_end
+
+
+def _date_bounds(value: Any) -> tuple[str, str] | None:
+    value = str(value or "")[:10]
+    try:
+        if re.fullmatch(r"\d{4}", value):
+            return date(int(value), 1, 1).isoformat(), date(int(value), 12, 31).isoformat()
+        if re.fullmatch(r"\d{4}-\d{2}", value):
+            year, month = map(int, value.split("-"))
+            last_day = monthrange(year, month)[1]
+            return date(year, month, 1).isoformat(), date(year, month, last_day).isoformat()
+        exact = date.fromisoformat(value).isoformat()
+        return exact, exact
+    except ValueError:
+        return None
 
 
 def _string_list(value: Any, field: str) -> list[str]:

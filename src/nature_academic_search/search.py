@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
@@ -43,7 +44,7 @@ def deduplicate_records(records: Sequence[Mapping[str, Any]]) -> list[dict[str, 
 
     for raw_record in records:
         record = _prepare_record(raw_record)
-        keys = _record_keys(record)
+        keys = _identifier_keys(record)
         matches = sorted({key_to_group[key] for key in keys if key in key_to_group})
 
         if not matches:
@@ -58,13 +59,35 @@ def deduplicate_records(records: Sequence[Mapping[str, Any]]) -> list[dict[str, 
                     groups[duplicate_group] = None
                     for key, group_index in tuple(key_to_group.items()):
                         if group_index == duplicate_group:
-                            key_to_group[key] = target
+                            del key_to_group[key]
             _merge_record(groups[target], record)  # type: ignore[arg-type]
 
+        # Conflicting IDs are audit evidence, not keys for linking other records.
         current = groups[target]
         if current is not None:
-            for key in _record_keys(current):
+            for key in _identifier_keys(current):
                 key_to_group[key] = target
+
+    # Resolve identifier links first, then check each title bucket as a whole.
+    # A record without an ID must not bridge two incompatible records.
+    title_groups: dict[tuple[str, str], list[tuple[int, dict[str, Any]]]] = {}
+    for index, group in enumerate(groups):
+        if group is None or group["entity_type"] != "publication":
+            continue
+        title = _normalize_title(str(group.get("title") or ""))
+        year = group.get("year")
+        if title and year not in (None, ""):
+            title_groups.setdefault((title, str(year)), []).append((index, group))
+    for members in title_groups.values():
+        if len(members) < 2 or any(
+            len({group[field] for _, group in members if group.get(field)}) > 1
+            for field in IDENTIFIER_FIELDS[:-1]
+        ):
+            continue
+        target_group = members[0][1]
+        for duplicate_index, duplicate_record in members[1:]:
+            _merge_record(target_group, duplicate_record)
+            groups[duplicate_index] = None
 
     return [record for record in groups if record is not None]
 
@@ -110,6 +133,11 @@ async def search_all(
     missing = [source for source in needed_sources if source not in selected_adapters]
     if missing:
         raise ValueError(f"Missing adapters for sources: {missing}")
+    source_translation = (
+        {source: translate_filters(source, normalized_filters) for source in selected_sources}
+        if discovery_enabled
+        else {}
+    )
     tasks = [
         asyncio.create_task(
             asyncio.to_thread(
@@ -119,9 +147,7 @@ async def search_all(
                 query,
                 rows,
                 filter_type,
-                translate_filters(source, normalized_filters)
-                if discovery_enabled
-                else None,
+                source_translation.get(source),
                 discovery_enabled,
             )
         )
@@ -159,7 +185,14 @@ async def search_all(
     filtered_out_count = 0
     if discovery_enabled and normalized_filters:
         before_filter_count = len(results)
-        results = apply_post_filters(results, normalized_filters)
+        date_filtered_sources = {
+            source
+            for source, translation in source_translation.items()
+            if source in succeeded and {"date_from", "date_to"}.intersection(translation["applied"])
+        }
+        results = apply_post_filters(
+            results, normalized_filters, date_filtered_sources=date_filtered_sources
+        )
         filtered_out_count = before_filter_count - len(results)
     for record in results:
         record["record_id"] = stable_record_id(record)
@@ -188,12 +221,7 @@ async def search_all(
         "filters": normalized_filters,
         "ranking": ranking_metadata,
         "query_analysis": analyze_query(query),
-        "source_translation": {
-            source: translate_filters(source, normalized_filters)
-            for source in selected_sources
-        }
-        if discovery_enabled
-        else {},
+        "source_translation": source_translation,
         "result_fingerprint": result_fingerprint(
             [str(record["record_id"]) for record in results]
         ),
@@ -354,7 +382,7 @@ def _prepare_record(raw_record: Mapping[str, Any]) -> dict[str, Any]:
     return record
 
 
-def _record_keys(record: Mapping[str, Any]) -> list[tuple[str, str]]:
+def _identifier_keys(record: Mapping[str, Any]) -> list[tuple[str, str]]:
     keys: list[tuple[str, str]] = []
     entity_type = str(record.get("entity_type") or "publication")
     identifier_fields = ("nct_id",) if entity_type == "trial" else IDENTIFIER_FIELDS[:-1]
@@ -363,11 +391,6 @@ def _record_keys(record: Mapping[str, Any]) -> list[tuple[str, str]]:
         if value:
             keys.append((f"{entity_type}:{field}", str(value)))
 
-    if entity_type == "publication":
-        title = _normalize_title(str(record.get("title") or ""))
-        year = record.get("year")
-        if title and year not in (None, ""):
-            keys.append((f"{entity_type}:title_year", f"{title}:{year}"))
     return keys
 
 
@@ -379,6 +402,9 @@ def _merge_record(target: dict[str, Any], incoming: Mapping[str, Any]) -> None:
     for source_record in incoming.get("source_records") or []:
         if source_record not in target["source_records"]:
             target["source_records"].append(source_record)
+    for conflict in incoming.get("conflicts") or []:
+        if conflict not in target["conflicts"]:
+            target["conflicts"].append(conflict)
 
     target_counts = target.setdefault("citation_counts", {})
     target_counts.update(incoming.get("citation_counts") or {})
@@ -418,7 +444,16 @@ def _merge_record(target: dict[str, Any], incoming: Mapping[str, Any]) -> None:
             "conflicts",
         }:
             continue
-        if value not in (None, "", [], {}) and target.get(key) in (None, "", [], {}):
+        existing = target.get(key)
+        if value not in (None, "", [], {}) and existing in (None, "", [], {}):
+            target[key] = value
+        elif (
+            key == "publication_date"
+            and isinstance(existing, str)
+            and len(existing) in {4, 7}
+            and isinstance(value, str)
+            and value.startswith(f"{existing}-")
+        ):
             target[key] = value
 
 
@@ -436,7 +471,12 @@ def _normalize_arxiv_id(value: str) -> str:
 
 
 def _normalize_title(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    characters = (
+        char if char.isalnum() or unicodedata.category(char).startswith("M") else " "
+        for char in normalized
+    )
+    return " ".join("".join(characters).split())
 
 
 def _source_records(record: Mapping[str, Any]) -> list[dict[str, Any]]:

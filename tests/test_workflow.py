@@ -55,7 +55,57 @@ def test_workflow_requires_approval_before_search(tmp_path: Path) -> None:
     assert not (tmp_path / "results.json").exists()
 
 
-def test_workflow_runs_auditable_search_verify_screen_and_export(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("succeeded", "failed", "expected_status"),
+    [
+        (["crossref", "pubmed"], [], "completed"),
+        (["crossref"], ["pubmed"], "completed_with_errors"),
+        ([], ["crossref", "pubmed"], "failed"),
+    ],
+)
+def test_workflow_distinguishes_zero_hits_from_source_failures(
+    tmp_path: Path, succeeded: list[str], failed: list[str], expected_status: str,
+) -> None:
+    def search(_: WorkflowSpec) -> dict:
+        return {
+            "sources_queried": ["crossref", "pubmed"],
+            "sources_succeeded": succeeded,
+            "results": [],
+            "errors": [{"source": source, "error": "HTTP 503"} for source in failed] or None,
+        }
+
+    output = WorkflowRunner(search_fn=search).run(
+        spec(steps=["search", "verify", "export"]), tmp_path, approve=True,
+    )
+
+    manifest = json.loads((tmp_path / "run.json").read_text())
+    assert output["status"] == manifest["status"] == expected_status
+    assert output["exported_count"] == 0
+    assert [error["source"] for error in output["errors"] or []] == failed
+    assert manifest.get("errors") == output["errors"]
+    assert (tmp_path / "references.ris").exists() == bool(succeeded)
+    assert ("references.ris" in manifest["artifacts"]) == bool(succeeded)
+    assert ("verification.json" in manifest["artifacts"]) == bool(succeeded)
+    assert "results.json" in manifest["artifacts"]
+
+
+def test_workflow_rerun_lists_only_files_written_in_that_run(tmp_path: Path) -> None:
+    runner = WorkflowRunner(search_fn=lambda _: {"results": []})
+    first = runner.run(
+        spec(steps=["search", "verify", "expand_citations", "export"]), tmp_path, approve=True,
+    )
+    assert {"verification.json", "graph.json", "references.ris"} <= set(first["artifacts"])
+
+    second = runner.run(spec(steps=["search"]), tmp_path, approve=True)
+
+    assert set(second["artifacts"]) == {"plan.json", "run.json", "results.json"}
+    assert (tmp_path / "references.ris").is_file()
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_workflow_runs_auditable_search_verify_screen_and_export(
+    tmp_path: Path, partial: bool,
+) -> None:
     result_record = {
         "entity_type": "publication",
         "record_id": "publication:doi:10.1000/example",
@@ -70,8 +120,9 @@ def test_workflow_runs_auditable_search_verify_screen_and_export(tmp_path: Path)
     def search(_: WorkflowSpec) -> dict:
         return {
             "search_run": {"schema_version": "1", "run_id": "search-1"},
+            "sources_succeeded": ["crossref"],
             "results": [result_record],
-            "errors": None,
+            "errors": [{"source": "pubmed", "error": "HTTP 503"}] if partial else None,
         }
 
     def lookup(identifier: str, _: str) -> dict:
@@ -97,7 +148,7 @@ def test_workflow_runs_auditable_search_verify_screen_and_export(tmp_path: Path)
         spec(), tmp_path, approve=True
     )
 
-    assert result["status"] == "completed"
+    assert result["status"] == ("completed_with_errors" if partial else "completed")
     assert set(result["artifacts"]) >= {
         "run.json",
         "results.json",
@@ -109,6 +160,7 @@ def test_workflow_runs_auditable_search_verify_screen_and_export(tmp_path: Path)
     assert json.loads((tmp_path / "verification.json").read_text())[0]["status"] == "verified"
     assert "10.1000/example" in (tmp_path / "references.ris").read_text()
     assert "include" in (tmp_path / "screening.csv").read_text()
+    assert ("HTTP 503" in (tmp_path / "report.md").read_text()) == partial
     assert json.loads((tmp_path / "run.json").read_text())["search_run"]["run_id"] == "search-1"
 
 

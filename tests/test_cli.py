@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from pytest import CaptureFixture
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -249,6 +251,36 @@ def test_citation_preflight_uses_the_unified_skip_aware_reporter() -> None:
 
     assert status == 0
     print_report.assert_called_once_with(results)
+
+
+def test_cli_workflow_exits_unsuccessfully_when_all_sources_fail(
+    tmp_path: Path, capsys: CaptureFixture[str],
+) -> None:
+    from nature_academic_search.cli import main
+    from nature_academic_search.errors import DataSourceError
+    from nature_academic_search.sources.crossref import CrossRefSource
+
+    config = tmp_path / "workflow.yml"
+    config.write_text(
+        "workflow: smoke\nquestion: deep learning\nsteps: [search, verify, export]\n"
+        "search: {sources: [crossref]}\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "artifacts"
+
+    with patch.object(
+        CrossRefSource, "search", side_effect=DataSourceError("crossref", "Request timed out"),
+    ):
+        exit_code = main(
+            ["workflow", "run", "--file", str(config), "--output", str(output), "--approve"],
+        )
+
+    result = json.loads(capsys.readouterr().out)
+    assert exit_code == 1
+    assert result["status"] == "failed"
+    assert result["errors"][0]["source"] == "crossref"
+    assert (output / "run.json").exists()
+    assert not (output / "references.ris").exists()
 
 
 def test_cli_workflow_verifies_and_exports_without_injected_lookup(tmp_path: Path) -> None:

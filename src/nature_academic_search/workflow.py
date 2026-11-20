@@ -168,61 +168,88 @@ class WorkflowRunner:
                 "plan": plan,
             }
 
+        written: set[str] = set()
         model_steps: dict[str, dict[str, Any]] = {}
-        errors: list[dict[str, str]] = []
+        search_errors: list[dict[str, Any]] = []
         search_result: dict[str, Any] = {"results": [], "errors": None}
         if "search" in workflow.steps:
             try:
                 search_result = _as_dict(self._run_search(workflow))
             except Exception as exc:
-                errors.append({"step": "search", "error": _safe_error(exc)})
                 search_result = {"results": [], "errors": [{"error": _safe_error(exc)}]}
+            if search_result.get("errors"):
+                search_result["errors"] = [
+                    {**error, "error": _safe_error(error["error"])}
+                    for error in search_result["errors"]
+                ]
+                search_errors = [{"step": "search", **error} for error in search_result["errors"]]
             self._write_json(destination, "results.json", search_result)
+            written.add("results.json")
 
-        records = [
-            dict(record)
-            for record in search_result.get("results", [])
-            if isinstance(record, Mapping)
-        ]
-        for record in records:
-            record.setdefault("record_id", stable_record_id(record))
-
-        verification: list[dict[str, Any]] = []
-        if "verify" in workflow.steps:
-            verification = self._verify_records(records, errors)
-            self._write_json(destination, "verification.json", verification)
-
-        if "expand_citations" in workflow.steps:
-            graphs = self._expand_citation_graphs(records, workflow, errors)
-            self._write_json(destination, "graph.json", graphs)
-
-        screening = self._screen_records(workflow, records, model_steps, errors)
-        if "screen" in workflow.steps:
-            self._write_csv(destination, "screening.csv", screening)
-
-        included = _included_records(
-            records,
-            verification,
-            workflow.verification.get("include_statuses", ["verified"]),
-            screening if "screen" in workflow.steps else None,
+        search_failed = (
+            bool(search_errors)
+            and not search_result.get("sources_succeeded")
+            and not search_result.get("results")
         )
-        exported_count = len(included) if "export" in workflow.steps else 0
-        if "export" in workflow.steps:
-            self._write_text(destination, "references.ris", _records_to_ris(included))
-            self._write_text(
-                destination,
-                "report.md",
-                _report(workflow, records, verification, screening, model_steps, exported_count),
-            )
+        errors = search_errors.copy()
+        exported_count = 0
+        if not search_failed:
+            records = [
+                dict(record)
+                for record in search_result.get("results", [])
+                if isinstance(record, Mapping)
+            ]
+            for record in records:
+                record.setdefault("record_id", stable_record_id(record))
+
+            verification: list[dict[str, Any]] = []
+            if "verify" in workflow.steps:
+                verification = self._verify_records(records, errors)
+                self._write_json(destination, "verification.json", verification)
+                written.add("verification.json")
+
+            if "expand_citations" in workflow.steps:
+                graphs = self._expand_citation_graphs(records, workflow, errors)
+                self._write_json(destination, "graph.json", graphs)
+                written.add("graph.json")
+
+            screening = self._screen_records(workflow, records, model_steps, errors)
+            if "screen" in workflow.steps:
+                self._write_csv(destination, "screening.csv", screening)
+                written.add("screening.csv")
+
+            if "export" in workflow.steps:
+                included = _included_records(
+                    records,
+                    verification,
+                    workflow.verification.get("include_statuses", ["verified"]),
+                    screening if "screen" in workflow.steps else None,
+                )
+                exported_count = len(included)
+                self._write_text(destination, "references.ris", _records_to_ris(included))
+                self._write_text(
+                    destination,
+                    "report.md",
+                    _report(
+                        workflow, records, verification, screening, model_steps,
+                        exported_count, search_errors,
+                    ),
+                )
+                written.update(("references.ris", "report.md"))
 
         artifacts = ["plan.json", "run.json"]
-        if (destination / "graph.json").exists():
+        if "graph.json" in written:
             artifacts.append("graph.json")
-        artifacts.extend(output for output in workflow.outputs if (destination / output).exists())
+        artifacts.extend(output for output in workflow.outputs if output in written)
         completed_at = _utc_now()
-        status = "completed_with_skips" if any(
-            step.get("status") == "skipped" for step in model_steps.values()
-        ) else "completed"
+        if search_failed:
+            status = "failed"
+        elif search_errors:
+            status = "completed_with_errors"
+        elif any(step.get("status") == "skipped" for step in model_steps.values()):
+            status = "completed_with_skips"
+        else:
+            status = "completed"
         manifest = {
             "schema_version": "1",
             "workflow_run_id": run_id,
@@ -452,10 +479,10 @@ class WorkflowRunner:
 
 
 def _lookup_record(identifier: str, id_type: str) -> dict[str, Any]:
-    """Load the existing MCP identifier resolver only when verification runs."""
-    from .server import _lookup_record as resolve_identifier
+    """Load the shared identifier resolver only when verification runs."""
+    from .resolution import resolve_record
 
-    return resolve_identifier(identifier, id_type)
+    return resolve_record(identifier, id_type)
 
 
 def _resolve(value: Any) -> Any:
@@ -582,7 +609,7 @@ def _safe_payload(value: Any, key: str = "") -> Any:
     return value
 
 
-def _safe_error(error: BaseException) -> str:
+def _safe_error(error: object) -> str:
     text = str(error)
     return re.sub(
         r"(?i)(?:api[_-]?key|token|secret|password)\s*[=:]\s*\S+",
@@ -655,6 +682,7 @@ def _report(
     screening: Sequence[Mapping[str, Any]],
     model_steps: Mapping[str, Any],
     exported_count: int,
+    search_errors: Sequence[Mapping[str, Any]],
 ) -> str:
     counts: dict[str, int] = {}
     for item in verification:
@@ -666,6 +694,10 @@ def _report(
             "",
             f"- 研究问题：{workflow.question}",
             f"- 检索记录：{len(records)}",
+            *[
+                f"- 检索来源失败（{item.get('source') or '未知'}）：{item['error']}"
+                for item in search_errors
+            ],
             f"- 核验状态：{json.dumps(counts, ensure_ascii=False)}",
             f"- 筛选记录：{len(screening)}",
             f"- 导出记录：{exported_count}",

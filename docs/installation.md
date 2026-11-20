@@ -4,8 +4,8 @@
 
 - Python 3.10 or newer
 - `uv` or `pipx` for isolated Python applications
-- Codex CLI, Claude Code, DeepSeek Harness, or any combination
-- A contact email for NCBI PubMed requests
+- Codex CLI, Claude Code, or DeepSeek Harness for agent use. The standalone CLI also runs without an agent.
+- A contact email for NCBI PubMed requests. The manual installer requires it.
 
 ## Install from PyPI
 
@@ -67,6 +67,9 @@ The shell installer uses `uv tool install` or `pipx install`; it refuses global
 
 ## Install as a plugin
 
+Both plugins include the Skill and MCP configuration. They start the runtime
+with `uvx`, so the client must be able to find `uvx` on its `PATH`.
+
 ### Codex
 
 ```bash
@@ -83,48 +86,57 @@ claude plugin install nature-academic-search@wp-a-academic-tools
 
 ## Install as a DeepSeek Harness Bundle
 
-DeepSeek Harness uses the companion npm Bundle and the official
+DeepSeek Harness uses the [companion Bundle](https://github.com/wp-a/dsh-academic-paper-search) and the official
 `@deepseek-ai/dsh-mcp-client` bridge. It keeps the Python MCP server as the only
 search implementation and exposes tools under `mcp__academic_search__*`.
 
 Requirements: Node.js >= 22.19, `pnpm`, and `uvx` from `uv` on `PATH`.
 
+Install from a local tarball built from the Bundle's source. The public npm registry
+currently does not serve `dsh-academic-paper-search`. The [Harness packaging guide](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
+documents the tarball workflow.
+
 ```bash
 npm install --global @deepseek-ai/dsh pnpm
 export PUBMED_EMAIL=researcher@example.com
-dsh plugin --profile web add dsh-academic-paper-search
+git clone https://github.com/wp-a/dsh-academic-paper-search.git
+cd dsh-academic-paper-search
+pnpm pack
+dsh plugin --profile web add "$PWD/dsh-academic-paper-search-0.1.0.tgz"
 dsh web
 ```
 
-Before the npm Bundle is published, install the package from its standalone
-repository checkout:
+If the Bundle version changes, use the filename printed by `pnpm pack`.
+The Bundle's [runtime configuration](https://github.com/wp-a/dsh-academic-paper-search/blob/main/cordis.patch.yml)
+currently pins `nature-academic-search==0.3.0` independently of the Codex and
+Claude Code plugins. Use the PyPI CLI directly for the `0.3.1` commands and workflow fixes.
+After upgrading Harness or the Bundle, restart the profile and check that the
+MCP tools load.
 
-```bash
-git clone https://github.com/wp-a/dsh-academic-paper-search.git
-dsh plugin --profile web add ./dsh-academic-paper-search
-```
+## Source configuration
 
-The DSH package is intentionally a thin adapter. Its `cordis.patch.yml` pins
-`nature-academic-search==0.3.0`, forwards optional source credentials explicitly,
-and enables bounded MCP reconnects. DSH is currently a developer preview, so
-re-check the Bundle after upgrading the harness.
-
-The Codex / Claude plugin uses `uvx` to run the package version pinned in `.mcp.json`.
-The standalone DSH Bundle manages its runtime pin independently; check its repository
-before assuming it has adopted Python `0.3.1`. Set the
-PubMed contact email in the environment that launches the client:
+Set the PubMed contact email in the environment that launches the client:
 
 ```bash
 export PUBMED_EMAIL=researcher@example.com
 ```
 
-Optional source credentials:
+| Variable | Purpose |
+|---|---|
+| `NCBI_API_KEY` | Optional NCBI credential |
+| `CROSSREF_MAILTO` | Optional CrossRef contact email |
+| `OPENALEX_API_KEY` | OpenAlex credential |
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar credential |
+| `NATURE_ACADEMIC_SEARCH_CONFIG` | Optional TOML configuration path |
 
-```bash
-export NCBI_API_KEY=
-export OPENALEX_API_KEY=
-export SEMANTIC_SCHOLAR_API_KEY=
-```
+The runtime reads process environment variables and optional TOML configuration.
+It does not read `.env` files automatically. Upstream access and quotas depend on
+the provider. Missing Semantic Scholar credentials skip its credentialed
+preflight check. Keep credentials out of `.mcp.json` and repository files.
+
+Default publication search uses CrossRef, PubMed, arXiv, OpenAlex, and Europe
+PMC. Semantic Scholar is available for explicit search and enrichment.
+To search ClinicalTrials.gov registrations, select `entity_type="trial"`.
 
 ## 可选工作流模型层
 
@@ -146,16 +158,6 @@ Responses 使用普通 HTTP；中转站不提供 Responses WebSocket 时无需�
 标题、摘要、标识符和批准的元数据，全文需要在 workflow 中显式设置
 `privacy.allow_full_text: true`。网关不可用只会跳过模型步骤，不会阻断学术源检索。
 
-The runtime accepts empty optional credentials; upstream access and quotas still
-depend on the source's current requirements. A missing
-Semantic Scholar key causes its credentialed preflight check to be skipped; it
-does not disable the five default publication sources. Never commit real key
-values to `.mcp.json`, TOML, or documentation snippets.
-
-Default publication search uses CrossRef, PubMed, arXiv, OpenAlex, and Europe
-PMC. Semantic Scholar is explicit search/enrichment. ClinicalTrials.gov is
-selected with `entity_type="trial"` and remains separate from publications.
-
 ## Verification
 
 ```bash
@@ -168,6 +170,13 @@ claude mcp get nature-academic-search
 Start a new Codex task or Claude Code session after installing or updating a
 plugin so the client reloads skills and MCP tools.
 
-The preflight report lists queried, skipped, successful, and failed endpoint
-checks without printing credential values. This project has not connected
-Google Scholar, Web of Science, Scopus, Embase, CNKI, or Wanfang.
+For a plugin-only install, run `uvx --from nature-academic-search==0.3.1 nature-academic-search preflight`.
+Preflight checks the source endpoints. To verify that the client has loaded its tools,
+run the [DOI example](../README.md#快速开始) in a fresh session and inspect its MCP call.
+
+| Symptom | What to check |
+|---|---|
+| The client cannot find `uvx` or `nature-academic-search-mcp` | Check the launch environment's `PATH` and reopen the client. |
+| The desktop app cannot see `PUBMED_EMAIL` | Set it in the app's launch environment. Alternatively, register a local MCP with `nature-academic-search install --client codex --email researcher@example.com` and disable the duplicate plugin MCP entry. |
+| `search` or `verify` is missing | Run `nature-academic-search --version` and upgrade to PyPI `0.3.1` or newer. Update the plugin separately if needed. |
+| An endpoint times out or returns HTTP 429 | Inspect `preflight` and the result's `errors`. Check provider credentials and quotas, then retry the affected source. |
